@@ -137,3 +137,37 @@ def get_poly(file_name,i=4,unit=None):
 #    display(curr_units_df[result])
 #    figs=[show_contour(contour[polygon_id]) for polygon_id in misses]
 #    display(Image.fromarray(np.hstack(figs)))
+
+
+
+def spam_unit():
+    bot.getScreen()
+    for i in range(200):
+        bot.getScreen()
+        print("Step,", i)
+        # get stored mana 
+        mana=bot.getText(220,1360,90,50,new=False,digits=True)
+        if mana=='': mana=0
+        # get unit mana 
+        mana_cost=bot.getText(450,1360,90,50,new=False,digits=True)
+        print(mana,mana_cost)
+        if mana_cost=='' and  mana==0:
+            time.sleep(1)
+            continue
+        if int(mana)>int(mana_cost):
+            print(f"Bought for {mana_cost}!")
+            bot.click(450,1360)
+            time.sleep(0.1)
+        else: time.sleep(1)
+
+
+def filter_keys(group_keys, token, exclude=False):
+    if exclude:
+        return [key for key in group_keys if not token in key]
+    else:
+        return [key for key in group_keys if token in key]
+
+#tier_1s = filter_keys(group_keys,1)
+#priest = filter_keys(group_keys,'priest.png')
+#unit_list = set(tier_1s + priest)
+#priest = unit_series.loc[['priest.png']]

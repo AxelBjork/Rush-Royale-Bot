@@ -68,7 +68,7 @@ def match_unit(file_name,guess_unit=True):
         return [unit_df.columns[0],unit_pred,guess[1]]
 
 # Get status of current grid
-def grid_status(names):
+def grid_status(names,prev_grid=None):
     grid_stats=[]
     for filename in names:
         rank = rank_error = 0
@@ -80,7 +80,15 @@ def grid_status(names):
     # Add grid position 
     box_id=[[(i//5)%5,i%5] for i in range(15)]
     grid_df['position']=box_id
-
+    if not prev_grid is None:
+        # Check Consistency
+        consistency = grid_df[['grid_id','unit','rank']] ==prev_grid[['grid_id','unit','rank']]
+        consistency = consistency.all(axis=1)
+        # Update age from previous grid
+        grid_df['Age']=prev_grid['Age'] * consistency
+        grid_df['Age'] += consistency
+    else:
+        grid_df['Age']=np.zeros(len(grid_df))
     return grid_df
 
 ####
