@@ -122,6 +122,8 @@ def get_poly(filename,i=4,shape=(120, 120),debug=False):
     edges[keep:-keep,keep:-keep] = 0
     # pick top 3 polygons
     cnts_raw=find_polygon(edges,5)
+    if len(cnts_raw)==0:
+        return None
     # Redraw Contours
     canvas = np.zeros(shape, np.uint8)
     for cnt in cnts_raw:
@@ -157,6 +159,8 @@ def match_rank(filename):
     
     # Get polygon of image
     target_corners=get_poly(filename)
+    if target_corners is None:
+       return 0, [0]*len(corner_dict)
     match_errors=[]
     for rank in corner_dict:
         polygon_error = 0

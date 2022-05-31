@@ -171,3 +171,29 @@ def filter_keys(group_keys, token, exclude=False):
 #priest = filter_keys(group_keys,'priest.png')
 #unit_list = set(tier_1s + priest)
 #priest = unit_series.loc[['priest.png']]
+
+def try_merge(prev_grid=None):
+    info=''
+    names=bot.scan_grid(new=True)
+    grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
+    df_split, df_groups, unit_list = bot_core.get_unit_count(grid_df)
+    df_groups = df_groups.sort_values(ascending=False)
+    # check if grid full
+    if 'empty.png' in unit_list:
+        # Merge if full board
+        if df_groups['empty.png']<3:
+            info='Merging!'
+            unit_list.remove('empty.png')
+            if 'hunter.png' in unit_list: unit_list.remove('hunter.png')
+            for i in range(3):
+                merge_tar = random.choice(unit_list)
+                for j in range(3):
+                    bot.merge_unit(grid_df,merge_tar)
+                    time.sleep(0.2)
+        else: info= 'need more units!'
+    # If grid seems full, merge any
+    else:
+        info = 'Full Grid - Merging!'
+        merge_tar = random.choice(unit_list)
+        bot.merge_unit(grid_df,merge_tar)
+    return grid_df,df_groups,info

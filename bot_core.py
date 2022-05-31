@@ -146,15 +146,17 @@ class Bot:
             names.append(file_name)
         return names
 
-    def merge_unit(self,grid_df,target):
-        df_split=grid_df.groupby("unit")
-        df_groups=df_split["unit"].count()
-        if df_groups[target]>1:
-            unit_type_df=df_split.get_group(target).reset_index(drop=True)
-            unit_chosen=random.sample(unit_type_df['position'].tolist(), 2)
-            self.swipe(*unit_chosen)
-            return 'Merged!', unit_type_df
-        else: return 'not enough', df_groups
+    def merge_unit(self,df_split,merge_series):
+        # Pick a random filtered target
+        merge_target =  merge_series.sample().index[0]
+        # Collect unit dataframe
+        merge_df=df_split.get_group(merge_target).sample(n=2)
+        # Extract unit position from dataframe
+        unit_chosen=merge_df['position'].tolist()
+        # Send Merge 
+        self.swipe(*unit_chosen)
+        time.sleep(0.2)
+        return merge_df
 ####
 #### END OF CLASS
 ####
@@ -196,3 +198,15 @@ def grid_meta_info(grid_df):
     unit_series=unit_series.sort_values(ascending=False)
     group_keys = list(unit_series.index)
     return df_split,unit_series, df_groups, group_keys
+
+# Returns all elements which match tokens value
+def filter_keys(unit_series,tokens):
+    series= []
+    for token in tokens:
+        # check if given token is int, assume unit rank filter
+        if isinstance(token,int):
+            exists = unit_series.index.get_level_values('rank').isin([token]).any()
+            series.append(unit_series.xs(token, level='rank',drop_level=False) if exists else pd.Series(dtype=object))
+        else:
+            series.append(unit_series.xs(token, level='unit',drop_level=False) if token in unit_series else pd.Series(dtype=object))
+    return pd.concat(series)
