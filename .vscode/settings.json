@@ -1,0 +1,8 @@
+{
+  "editor.tabSize": 4,
+  "jupyter.enableAutoMoveToNextCell": false,
+  "jupyter.enableCellCodeLens": false,
+  "editor.cursorStyle": "line",
+  "editor.insertSpaces": true,
+  "editor.fontSize": 14
+}
