@@ -133,7 +133,7 @@ def get_poly(filename,i=4,shape=(120, 120),debug=False):
     # Blur together Contours
     img_cnt = cv2.GaussianBlur(img_cnt,(5,5),0)
     cnts=find_polygon(img_cnt,1)
-    # Approximate Polygon
+    # Approximate Polygon         # Change arclength to expect of rank polygon
     i=4
     approx=cv2.approxPolyDP(cnts,1.5**i*0.01*cv2.arcLength(cnts,True),True)
     if debug:

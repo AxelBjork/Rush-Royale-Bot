@@ -197,3 +197,38 @@ def try_merge(prev_grid=None):
         merge_tar = random.choice(unit_list)
         bot.merge_unit(grid_df,merge_tar)
     return grid_df,df_groups,info
+
+
+def find_and_expand_unit_cluster(grid_df):
+    from scipy import ndimage
+    cluster_unit=grid_df['unit']=='engineer.png'
+    binary=cluster_unit.astype(int).to_numpy()
+    binary_2D= np.reshape(binary,(3,5))
+    # Find largest cluster in grid
+    loc = ndimage.find_objects(binary_2D)[0]
+    # Create a matrix with 1 - 14
+    pos_to_id=np.reshape(np.arange(15),(3,5))
+    # Find location of all elements in cluster (square)
+    cluster_id=pos_to_id[loc].flatten()
+    # Select nonzero elements in square
+    engineers_loc_cluster = np.flatnonzero(binary_2D[loc])
+    # Get id of engineers
+    engineers_id = cluster_id[engineers_loc_cluster]
+    # Create blank grid and draw cluster
+    blank_grid=np.zeros(15)
+    blank_grid[engineers_id]=1
+    cluster_grid = blank_grid.reshape(3,5)
+    # Calculate adjacent squares in grid
+    right_shift=np.pad(cluster_grid,((0,0),(1,0)), mode='constant')[:, :-1]
+    left_shift =np.pad(cluster_grid,((0,0),(0,1)), mode='constant')[:, 1:]
+    down_shift =np.pad(cluster_grid,((1,0),(0,0)), mode='constant')[:-1, :]
+    up_shift =  np.pad(cluster_grid,((0,1),(0,0)), mode='constant')[1:, :]
+    # Combine all shift and check all covered positions
+    expanded_cluster=np.flatnonzero(up_shift + down_shift+left_shift+right_shift)
+    new_loc=np.isin(expanded_cluster, engineers_id, invert=True)
+    expanded_cluster = expanded_cluster[new_loc]
+    # Draw cluster expansion locations
+    expanded_grid=np.zeros(15)
+    expanded_grid[expanded_cluster]=1
+    expanded_grid = expanded_grid.reshape(3,5)
+return expanded_grid
