@@ -63,6 +63,7 @@ class Bot:
             self.click(781,80)# Clear all apps
             time.sleep(2)
             self.shell(f'input tap 420 350') # re-open RR
+            self.shell(f'input tap 420 160') # re-open RR
             time.sleep(10)
     # Take screenshot of device screen and load pixel values 
     def getScreen(self):
