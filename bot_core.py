@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 import random
+from tqdm.notebook import trange, tqdm
 # Android ADB
 from scrcpy import Client, const
 import threading
@@ -56,15 +57,18 @@ class Bot:
     # Send key command, see py-scrcpy consts
     def key_input(self,key):
         self.client.control.keycode(key)
-    # Kill the game and restart
-    def restart_RR(self):
-            self.shell(f'input keyevent {const.KEYCODE_APP_SWITCH}') #Go app switch
-            time.sleep(1)
-            self.click(781,80)# Clear all apps
+    # Force restart the game through ADC, or spam 10 disconnects to abandon match
+    def restart_RR(self,quick_disconnect=False):
+            if quick_disconnect:
+                for i in range(40):
+                    self.shell(f'input keyevent {const.KEYCODE_APP_SWITCH}') #Go app switch
+                    return
+            # Force kill game through ADB shell
+            self.shell('am force-stop com.my.defense')
             time.sleep(2)
-            self.shell(f'input tap 420 350') # re-open RR
-            self.shell(f'input tap 420 160') # re-open RR
-            time.sleep(10)
+            # Launch application through ADB shell
+            self.shell('monkey -p com.my.defense 1')
+            time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
     def getScreen(self):
         self.shell(f'/system/bin/screencap -p /sdcard/{self.screenshotName}')
@@ -211,3 +215,8 @@ def filter_keys(unit_series,tokens):
         else:
             series.append(unit_series.xs(token, level='unit',drop_level=False) if token in unit_series else pd.Series(dtype=object))
     return pd.concat(series)
+# Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems
+def read_knowledge(bot):
+    spam_click=trange(1000)
+    for i in spam_click:
+        bot.click(450,1300,0.1)

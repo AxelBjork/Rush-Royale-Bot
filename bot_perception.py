@@ -65,6 +65,8 @@ def match_unit(file_name,guess_unit=True):
     if guess_unit:
         guess=unit_df.loc[unit_df['feature_distance'].idxmin()] # select empty if all 700
         unit_pred = guess[0]
+        if guess[1] == 700:
+            unit_pred = 'empty.png'
         return [unit_df.columns[0],unit_pred,guess[1]]
 
 # Get status of current grid
