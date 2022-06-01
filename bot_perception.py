@@ -156,7 +156,6 @@ def match_rank(filename):
     'rank4':np.array([[60,0],[0,60],[60,120],[120,60]]),
     'rank5':np.array([[15,10],[15,80],[60,115],[105,80],[105,10]]),    
         }
-    
     # Get polygon of image
     target_corners=get_poly(filename)
     if target_corners is None:
