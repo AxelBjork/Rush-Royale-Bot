@@ -24,12 +24,14 @@ def feature_match(img_query,img_train):
         # find the keypoints and descriptors with ORB
         kp1, des1 = orb.detectAndCompute(img_query,None) # queryImage
         kp2, des2 = orb.detectAndCompute(img_train,None) # trainImage
-        if des2 is None:
+        if des2 is None: # if no features are found, return
             return 'No Matches'
         # create BFMatcher object
         bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         # Match descriptors.
         matches = bf.match(des1,des2)
+        #if len(matches)==0: # if no matches are found, return
+        #    return 'No Matches'
         # Sort them in the order of their distance.
         matches = sorted(matches, key = lambda x:x.distance)
         return matches
@@ -56,19 +58,17 @@ def match_unit(file_name,guess_unit=True):
                 match+=matches[i].distance
         else:
             match=700
-        current_icons.append([target,match])
-    unit_df=pd.DataFrame(current_icons, columns=['icon_'+grid_id,'feature_distance'])
+        current_icons.append([target,match,len(matches)])
+    unit_df=pd.DataFrame(current_icons, columns=['icon_'+grid_id,'feature_distance','num_match'])
     if not guess_unit:
         return unit_df
     if guess_unit:
-        guess=unit_df.loc[unit_df['feature_distance'].idxmin()]
+        guess=unit_df.loc[unit_df['feature_distance'].idxmin()] # select empty if all 700
         unit_pred = guess[0]
-        #if guess[1]>0.55:
-        #    unit_pred = 'empty.png'
         return [unit_df.columns[0],unit_pred,guess[1]]
 
 # Get status of current grid
-def grid_status(names,prev_grid=None):
+def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
     grid_stats=[]
     for filename in names:
         rank = rank_error = 0
