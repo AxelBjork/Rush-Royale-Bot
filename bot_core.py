@@ -20,6 +20,8 @@ SLEEP_DELAY=0.1
 class Bot:
     def __init__(self):
         self.device = 'emulator-5554'
+        # Try to launch application through ADB shell
+        self.shell('monkey -p com.my.defense 1')
         self.screenshotName = self.device + '-screenshot.png'
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
         self.client = Client(device=self.device)
@@ -113,7 +115,7 @@ class Bot:
             x = loc[1][0]
             return [x, y]
     # Check if any icons are on screen
-    def get_current_icons(self,new=True):
+    def get_current_icons(self,new=True,available=False):
         current_icons=[]
         # Update screen and load screenshot as grayscale
         if new: self.getScreen()
@@ -137,6 +139,9 @@ class Bot:
                 x = loc[1][0]
             current_icons.append([target,icon_found,(x,y)])
         icon_df=pd.DataFrame(current_icons, columns=['icon','available','pos [X,Y]'])
+        # filter out only available buttons
+        if available:
+            icon_df=icon_df[icon_df['available']==True].reset_index(drop=True)
         return icon_df
     # Scan battle grid, update OCR images
     def scan_grid(self,new=False):
@@ -215,6 +220,24 @@ def filter_keys(unit_series,tokens):
         else:
             series.append(unit_series.xs(token, level='unit',drop_level=False) if token in unit_series else pd.Series(dtype=object))
     return pd.concat(series)
+
+# Returns all elements which match tokens value with multiple levels
+def adv_filter_keys(unit_series,tokens,remove=False):
+    # Add detection of dimension in input tokens
+    merge_series= unit_series
+    for level in tokens:
+        series= []
+        for token in level:
+            # check if given token is int, assume unit rank filter
+            if isinstance(token,int):
+                exists = merge_series.index.get_level_values('rank').isin([token]).any()
+                series.append(merge_series.xs(token, level='rank',drop_level=False) if exists else pd.Series(dtype=object))
+            else:
+                series.append(merge_series.xs(token, level='unit',drop_level=False) if token in merge_series else pd.Series(dtype=object))
+        merge_series = pd.concat(series)
+    if remove:
+        merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
+    return merge_series
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems
 def read_knowledge(bot):
     spam_click=trange(1000)
