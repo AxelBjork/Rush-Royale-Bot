@@ -160,7 +160,11 @@ class Bot:
         # Pick a random filtered target
         merge_target =  merge_series.sample().index[0]
         # Collect unit dataframe
-        merge_df=df_split.get_group(merge_target).sample(n=2)
+        merge_df=df_split.get_group(merge_target)
+        if len(merge_df)>1:
+            merge_df=merge_df.sample(n=2)
+        else: 
+            return merge_df
         # Extract unit position from dataframe
         unit_chosen=merge_df['position'].tolist()
         # Send Merge 
