@@ -226,6 +226,7 @@ class Bot:
 
     # Start a dungeon floor from PvE page
     def play_dungeon(self,floor=5):
+        print('Starting Dungeon floor', floor)
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil(floor/3))}.png'
         expanded=0
@@ -259,18 +260,32 @@ class Bot:
                 time.sleep(2) # wait for matchmaking        
 
     # Locate game home screen and try to start fight is chosen
-    def battle_screen(self,start=False,pve=True,floor=5):
+    def battle_screen(self,start=False,pve=True,floor=5,ad=False):
         # Scan screen for any key buttons
-        button_df = self.get_current_icons()
+        button_df_all = self.get_current_icons(available=True)
         # filter relevant buttons
-        button_df = button_df[button_df['icon'].isin(['back_button.png','battle_icon.png','0cont_button.png','1quit.png', 'fighting.png','pvp_button.png'])]
-        avail_buttons=button_df[button_df['available']==True].reset_index(drop=True)
+        button_df = button_df_all[button_df_all['icon'].isin(['back_button.png','battle_icon.png','0cont_button.png','1quit.png', 'fighting.png','pvp_button.png'])]
+        avail_buttons=button_df.reset_index(drop=True)
         if not avail_buttons.empty:
             # list of buttons
             button_names=avail_buttons['icon'].tolist()
             if 'fighting.png' in button_names and not '0cont_button.png' in button_names:
                 return avail_buttons,'fighting'
-            # Start pvp if homescreen
+            # Watch ad if available
+            if ad:
+                if (button_df_all == 'quest_done.png').any(axis=None):
+                    pos = get_button_pos(button_df_all,'quest_done.png')
+                    self.click_button(pos)
+                    self.click(420,420) # collect ad chest
+                if (button_df_all == 'ad_season.png').any(axis=None):
+                    pos = get_button_pos(button_df_all,'ad_season.png')
+                    self.click_button(pos)
+                    return button_df_all,'watching_ad'
+                if (button_df_all == 'ad_pve.png').any(axis=None):
+                    pos = get_button_pos(button_df_all,'ad_pve.png')
+                    self.click_button(pos)
+                    return button_df_all,'watching_ad'
+            # Start pvp if homescreen            
             if start and 'pvp_button.png' in button_names and 'battle_icon.png' in button_names:
                 pvp_pos = get_button_pos(button_df,'pvp_button.png')
                 if pve:
