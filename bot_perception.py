@@ -114,30 +114,26 @@ def find_polygon(edges,num=1):
         cnts=cnts[0]
     return cnts
 
-def get_poly(filename,i=4,shape=(120, 120),debug=False):
+def get_poly(filename,ref,i=4,shape=(120, 120),debug=False):
     # read image as grayscale
     img = cv2.imread(filename,0)
     # Find edges in image
-    edges = cv2.Canny(img,100,200)
-    # Remove unit in the middle
-    keep=35
-    edges[keep:-keep,keep:-keep] = 0
-    # pick top 3 polygons
-    cnts_raw=find_polygon(edges,5)
-    if len(cnts_raw)==0:
-        return None
-    # Redraw Contours
-    canvas = np.zeros(shape, np.uint8)
-    for cnt in cnts_raw:
-        img_cnt=cv2.drawContours(canvas, [cnt], -1, 255, 3)
-    # Blur together Contours
-    img_cnt = cv2.GaussianBlur(img_cnt,(5,5),0)
-    cnts=find_polygon(img_cnt,1)
+    edges = cv2.Canny(img,50,100)
+    # read reference image
+    img_ref = cv2.imread(ref,0)
+    img_ref = cv2.GaussianBlur(img_ref,(5,5),0)
+    # Apply filter
+    img_match = edges &img_ref
+    img_match = cv2.GaussianBlur(img_match,(5,5),0)
+    # pick top polygon
+    cnts=find_polygon(img_match,1)
     # Approximate Polygon         # Change arclength to expect of rank polygon
-    i=4
+    i=3
     approx=cv2.approxPolyDP(cnts,1.5**i*0.01*cv2.arcLength(cnts,True),True)
     if debug:
-        return approx,cnts,img_cnt,cnts_raw,edges,img
+        return approx,cnts,img_match,edges,img
+    if approx is None:
+       return 0, [0]*4
     return approx
 
 
@@ -149,6 +145,7 @@ def mean_square(array, coord):
     idx=coord_mse.argmin()
     return coord_mse[idx][0]
 # Run mean square of all ranks
+
 # Returns guess of unit rank
 def match_rank(filename):
     # Load dictionary with expected corner positions
@@ -158,12 +155,11 @@ def match_rank(filename):
     'rank4':np.array([[60,0],[0,60],[60,120],[120,60]]),
     'rank5':np.array([[15,10],[15,80],[60,115],[105,80],[105,10]]),    
         }
-    # Get polygon of image
-    target_corners=get_poly(filename)
-    if target_corners is None:
-       return 0, [0]*len(corner_dict)
     match_errors=[]
     for rank in corner_dict:
+        target=f'unit_rank/{rank}_bin.png'
+        # Get polygon of image
+        target_corners=get_poly(filename,target)
         polygon_error = 0
         # Take mean square loss for each corner
         for corner in corner_dict[rank]:

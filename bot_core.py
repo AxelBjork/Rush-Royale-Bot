@@ -174,6 +174,121 @@ class Bot:
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
+    def try_merge(self,rank=1,prev_grid=None):
+        info=''
+        merge_df =None
+        names=self.scan_grid(new=True)
+        grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
+        df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
+        # Select stuff to merge
+        merge_series = unit_series[unit_series>=2] # At least 2 units ## ADD MIME to every count, use sample rank and check if mime exist
+        # check if grid full
+        if ('empty.png',0) in group_keys:
+            # Try to merge priest
+            merge_priest = filter_keys(merge_series,['priest.png'])
+            if not merge_priest.empty:
+                merge_df = self.merge_unit(df_split,merge_priest)
+            # Merge if full board
+            if df_groups['empty.png']<=2:
+                info='Merging!'
+                # Add criteria
+                merge_series = filter_keys(merge_series,[rank,'priest.png'])
+                if not merge_series.empty:
+                    # drop duplicated indices
+                    merge_series = merge_series[~merge_series.index.duplicated()]
+                    # Take index name of random sample
+                    merge_target =  merge_series.sample().index[0] 
+                    # Retrieve group    
+                    merge_df=df_split.get_group(merge_target)
+                    #merge_df=merge_df.sort_values(by='Age',ascending=False).reset_index(drop=True)
+                    # Send merge command
+                    merge_df = self.merge_unit(df_split,merge_series)
+                else:
+                    info='not enough filtered targets!'
+            else: info= 'need more units!'
+        # If grid seems full, merge any
+        else:
+            info = 'Full Grid - Merging!'
+            # Remove all high level crystals
+            merge_df = self.merge_unit(df_split,merge_series)
+        return grid_df,unit_series,merge_df,info
+        # Mana level cards
+    def mana_level(self,cards, hero_power=False):
+        upgrade_pos_dict={
+        1:[100,1500], 2:[200,1500],
+        3:[350,1500], 4:[500,1500],
+        5:[650,1500] }
+        # Level each card
+        for card in cards:
+            self.click(*upgrade_pos_dict[card])
+        if hero_power:
+            self.click(800,1500)
+
+    # Start a dungeon floor from PvE page
+    def play_dungeon(self,floor=5):
+        # Divide by 3 and take ceiling of floor as int
+        target_chapter = f'chapter_{int(np.ceil(floor/3))}.png'
+        expanded=0
+        pos = np.array([0,0])
+        avail_buttons = self.get_current_icons(available=True)
+        # Check if on dungeon page
+        if (avail_buttons == 'dungeon_page.png').any(axis=None):
+            # Swipe to the top
+            [self.swipe([0,0],[2,0]) for i in range(10)]
+            self.click(30,600,5) # stop scroll and scan screen for buttons
+            # Keep swiping until floor is found
+            for i in range(10):
+                avail_buttons = self.get_current_icons(available=True)
+                # Look for correct chapter
+                if (avail_buttons == target_chapter).any(axis=None):
+                    pos = get_button_pos(avail_buttons,target_chapter)
+                    if not expanded:
+                        expanded = 1
+                        self.click_button(pos+[500,90])
+                    # check button is near top of screen
+                    if pos[1] < 550:
+                        # Stop scrolling
+                        break
+                # Swipe down (change to swipe up for floor 10 cleared)
+                [self.swipe([2,0],[0,0]) for i in range(1)]
+                self.click(30,600) # stop scroll and scan screen for buttons
+            ## Click play floor if found
+            if not (pos == np.array([0,0])).any():
+                self.click_button(pos+[0,85+400*(floor%3)]) #(only 1,2, 4,5, 7, 8 possible)
+                self.click_button((130,950))
+                time.sleep(2) # wait for matchmaking        
+
+    # Locate game home screen and try to start fight is chosen
+    def battle_screen(self,start=False,pve=True,floor=5):
+        # Scan screen for any key buttons
+        button_df = self.get_current_icons()
+        # filter relevant buttons
+        button_df = button_df[button_df['icon'].isin(['back_button.png','battle_icon.png','0cont_button.png','1quit.png', 'fighting.png','pvp_button.png'])]
+        avail_buttons=button_df[button_df['available']==True].reset_index(drop=True)
+        if not avail_buttons.empty:
+            # list of buttons
+            button_names=avail_buttons['icon'].tolist()
+            if 'fighting.png' in button_names and not '0cont_button.png' in button_names:
+                return avail_buttons,'fighting'
+            # Start pvp if homescreen
+            if start and 'pvp_button.png' in button_names and 'battle_icon.png' in button_names:
+                pvp_pos = get_button_pos(button_df,'pvp_button.png')
+                if pve:
+                    # Add a 500 pixel offset for PvE button
+                    self.click_button(pvp_pos+[500,0])
+                    self.play_dungeon(floor=floor)
+                else: self.click_button(pvp_pos)
+                time.sleep(1)
+                return avail_buttons, 'home'
+            # Check first button is clickable
+            first_button=button_names[0].split('.')[0]
+            if first_button in ['back_button','battle_icon','0cont_button','1quit']:
+                button_pos=avail_buttons['pos [X,Y]'].tolist()[0]
+                self.click_button(button_pos)
+                return avail_buttons,'menu'
+        else:
+            self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
+            return button_df,'lost'
 ####
 #### END OF CLASS
 ####
@@ -250,3 +365,8 @@ def read_knowledge(bot):
     spam_click=trange(1000)
     for i in spam_click:
         bot.click(450,1300,0.1)
+
+def get_button_pos(df,button):
+    #button=button+'.png'
+    pos=df[df['icon']==button]['pos [X,Y]'].reset_index(drop=True)[0]
+    return np.array(pos)

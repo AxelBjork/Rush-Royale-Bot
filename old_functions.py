@@ -232,3 +232,12 @@ def find_and_expand_unit_cluster(grid_df):
     expanded_grid[expanded_cluster]=1
     expanded_grid = expanded_grid.reshape(3,5)
 return expanded_grid
+
+# get stored mana 
+#bot.getText(220,1360,90,50,new=False,digits=True)
+
+# get unit mana 
+bot.getText(450,1360,90,50,new=False,digits=True)
+
+# Get upgrade mana
+#bot.getText(20,1540,700,50,new=False,digits=True).split('6')
