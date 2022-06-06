@@ -158,7 +158,10 @@ class Bot:
 
     def merge_unit(self,df_split,merge_series):
         # Pick a random filtered target
-        merge_target =  merge_series.sample().index[0]
+        if len(merge_series)>0:
+            merge_target =  merge_series.sample().index[0]
+        else: 
+            return merge_series
         # Collect unit dataframe
         merge_df=df_split.get_group(merge_target)
         if len(merge_df)>1:
