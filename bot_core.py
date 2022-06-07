@@ -343,10 +343,12 @@ def adv_filter_keys(unit_series,tokens,remove=False):
     # Add detection of dimension in input tokens
     merge_series= unit_series.copy()
     for level in tokens:
+        merge_series_temp= merge_series.copy()
         if not isinstance(level, list): # Make token a list if not already
             level = [level]
         series= []
         for token in level:
+            print(level,token)
             # check if given token is int, assume unit rank filter
             if isinstance(token,int):
                 exists = merge_series.index.get_level_values('rank').isin([token]).any()
@@ -357,15 +359,23 @@ def adv_filter_keys(unit_series,tokens,remove=False):
                 if token in merge_series: 
                     series.append(merge_series.xs(token, level='unit',drop_level=False))
                 else: continue
+        # Every iteration
+        # If any matches are found
         if not len(series)==0:
             merge_series = pd.concat(series)
-            if remove:
-                merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
-            return merge_series
-        elif not remove: # return empty list if empty and nothing matches criteria
+            # Select matches in previous matches 
+            merge_series = merge_series_temp[merge_series_temp.index.isin(merge_series.index)]
+         # return empty list if empty and nothing matches criteria
+        elif not remove:
             return pd.Series(dtype=object)
-        # Otherwise Do next loop with unchanged merge series otherwise
-    # Return result of all criterias
+        # if removing matches from initial series and no matches are found, do nothing this loop, keep list same
+        else: 
+            continue
+    # LOOP DONE
+    if remove:
+        # Remove all matches found from original series
+        merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
+    # Return matches found
     return merge_series
 
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems

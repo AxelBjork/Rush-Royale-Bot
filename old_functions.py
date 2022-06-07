@@ -286,3 +286,19 @@ def try_merge(self,rank=1,prev_grid=None):
         # Remove all high level crystals
         merge_df = self.merge_unit(df_split,merge_series)
     return grid_df,unit_series,merge_df,info
+
+        if not len(series)==0:
+            print(123)
+            merge_series = pd.concat(series)
+            if remove:
+                merge_series = merge_series_temp[~merge_series_temp.index.isin(merge_series.index)]
+                display(merge_series)
+            else:
+                continue
+        elif not remove: # return empty list if empty and nothing matches criteria
+            print(321)
+            return pd.Series(dtype=object)
+        # Otherwise Do next loop with unchanged merge series otherwise
+    # Return result of all criterias
+    print(555)
+    return merge_series
