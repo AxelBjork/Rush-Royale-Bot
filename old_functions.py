@@ -241,3 +241,48 @@ bot.getText(450,1360,90,50,new=False,digits=True)
 
 # Get upgrade mana
 #bot.getText(20,1540,700,50,new=False,digits=True).split('6')
+
+# Remove tuple tokens from unit series
+def remove_keys(unit_series,tokens = [('empty.png', 0)]):
+    return unit_series[~unit_series.index.isin(tokens)]
+
+
+# Try to find a merge target and merge it
+def try_merge(self,rank=1,prev_grid=None):
+    info=''
+    merge_df =None
+    names=self.scan_grid(new=True)
+    grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
+    df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
+    # Select stuff to merge
+    merge_series = unit_series[unit_series>=2] # At least 2 units ## ADD MIME to every count, use sample rank and check if mime exist
+    # check if grid full
+    if ('empty.png',0) in group_keys:
+        # Try to merge priest
+        merge_priest = filter_keys(merge_series,['priest.png'])
+        if not merge_priest.empty:
+            merge_df = self.merge_unit(df_split,merge_priest)
+        # Merge if full board
+        if df_groups['empty.png']<=2:
+            info='Merging!'
+            # Add criteria
+            merge_series = filter_keys(merge_series,[rank,'priest.png'])
+            if not merge_series.empty:
+                # drop duplicated indices
+                merge_series = merge_series[~merge_series.index.duplicated()]
+                # Take index name of random sample
+                merge_target =  merge_series.sample().index[0] 
+                # Retrieve group    
+                merge_df=df_split.get_group(merge_target)
+                #merge_df=merge_df.sort_values(by='Age',ascending=False).reset_index(drop=True)
+                # Send merge command
+                merge_df = self.merge_unit(df_split,merge_series)
+            else:
+                info='not enough filtered targets!'
+        else: info= 'need more units!'
+    # If grid seems full, merge any
+    else:
+        info = 'Full Grid - Merging!'
+        # Remove all high level crystals
+        merge_df = self.merge_unit(df_split,merge_series)
+    return grid_df,unit_series,merge_df,info

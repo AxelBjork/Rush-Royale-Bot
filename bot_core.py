@@ -155,7 +155,7 @@ class Bot:
             self.crop_img(*box_list[i],*box_size,name=file_name)
             names.append(file_name)
         return names
-
+    # Take random unit in series, find corresponding dataframe and merge two random ones
     def merge_unit(self,df_split,merge_series):
         # Pick a random filtered target
         if len(merge_series)>0:
@@ -174,6 +174,7 @@ class Bot:
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
+    # Try to find a merge target and merge it
     def try_merge(self,rank=1,prev_grid=None):
         info=''
         merge_df =None
@@ -181,38 +182,40 @@ class Bot:
         grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
         df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
         # Select stuff to merge
-        merge_series = unit_series[unit_series>=2] # At least 2 units ## ADD MIME to every count, use sample rank and check if mime exist
+        # Find highest chemist rank
+        merge_series = unit_series
+        merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
+        if not merge_chemist.empty:
+            max_chemist = merge_chemist.index.max()
+            # Remove 1 count of highest rank chemist
+            merge_series[merge_series.index == max_chemist] = merge_series[merge_series.index == max_chemist] - 1
+        # Select stuff to merge
+        merge_series = merge_series[merge_series>=2] # At least 2 units ## ADD MIME to every count, use sample rank and check if mime exist
         # check if grid full
         if ('empty.png',0) in group_keys:
-            # Try to merge priest
-            merge_priest = filter_keys(merge_series,['priest.png'])
-            if not merge_priest.empty:
-                merge_df = self.merge_unit(df_split,merge_priest)
+            # Try to merge high priority units
+            merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png']])
+            if not merge_prio.empty:
+                merge_df = self.merge_unit(df_split,merge_prio)
             # Merge if full board
             if df_groups['empty.png']<=2:
                 info='Merging!'
                 # Add criteria
-                merge_series = filter_keys(merge_series,[rank,'priest.png'])
+                merge_series = adv_filter_keys(merge_series,rank,remove=False)
                 if not merge_series.empty:
-                    # drop duplicated indices
-                    merge_series = merge_series[~merge_series.index.duplicated()]
-                    # Take index name of random sample
-                    merge_target =  merge_series.sample().index[0] 
-                    # Retrieve group    
-                    merge_df=df_split.get_group(merge_target)
-                    #merge_df=merge_df.sort_values(by='Age',ascending=False).reset_index(drop=True)
-                    # Send merge command
                     merge_df = self.merge_unit(df_split,merge_series)
                 else:
-                    info='not enough filtered targets!'
+                    info='not enough rank 1 targets!'
             else: info= 'need more units!'
-        # If grid seems full, merge any
+        # If grid seems full, merge more units
         else:
             info = 'Full Grid - Merging!'
-            # Remove all high level crystals
-            merge_df = self.merge_unit(df_split,merge_series)
+            # Remove all high level crystals and zealots
+            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png']],remove=True)
+            if not merge_series.empty:
+                merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_df,info
-        # Mana level cards
+    # Mana level cards
     def mana_level(self,cards, hero_power=False):
         upgrade_pos_dict={
         1:[100,1500], 2:[200,1500],
@@ -260,50 +263,31 @@ class Bot:
                 time.sleep(2) # wait for matchmaking        
 
     # Locate game home screen and try to start fight is chosen
-    def battle_screen(self,start=False,pve=True,floor=5,ad=False):
+    def battle_screen(self,start=False,pve=True,floor=5):
         # Scan screen for any key buttons
-        button_df_all = self.get_current_icons(available=True)
-        # filter relevant buttons
-        button_df = button_df_all[button_df_all['icon'].isin(['back_button.png','battle_icon.png','0cont_button.png','1quit.png', 'fighting.png','pvp_button.png'])]
-        avail_buttons=button_df.reset_index(drop=True)
-        if not avail_buttons.empty:
+        df = self.get_current_icons(available=True)
+        if not df.empty:
             # list of buttons
-            button_names=avail_buttons['icon'].tolist()
-            if 'fighting.png' in button_names and not '0cont_button.png' in button_names:
-                return avail_buttons,'fighting'
-            # Watch ad if available
-            if ad:
-                if (button_df_all == 'quest_done.png').any(axis=None):
-                    pos = get_button_pos(button_df_all,'quest_done.png')
-                    self.click_button(pos)
-                    self.click(420,420) # collect ad chest
-                if (button_df_all == 'ad_season.png').any(axis=None):
-                    pos = get_button_pos(button_df_all,'ad_season.png')
-                    self.click_button(pos)
-                    return button_df_all,'watching_ad'
-                if (button_df_all == 'ad_pve.png').any(axis=None):
-                    pos = get_button_pos(button_df_all,'ad_pve.png')
-                    self.click_button(pos)
-                    return button_df_all,'watching_ad'
-            # Start pvp if homescreen            
-            if start and 'pvp_button.png' in button_names and 'battle_icon.png' in button_names:
-                pvp_pos = get_button_pos(button_df,'pvp_button.png')
+            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None) in df:
+                return df,'fighting'
+            # Start pvp if homescreen   
+            if start and (df == 'pvp_button.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
+                pvp_pos = get_button_pos(df,'pvp_button.png')
                 if pve:
                     # Add a 500 pixel offset for PvE button
                     self.click_button(pvp_pos+[500,0])
                     self.play_dungeon(floor=floor)
                 else: self.click_button(pvp_pos)
                 time.sleep(1)
-                return avail_buttons, 'home'
+                return df, 'home'
             # Check first button is clickable
-            first_button=button_names[0].split('.')[0]
-            if first_button in ['back_button','battle_icon','0cont_button','1quit']:
-                button_pos=avail_buttons['pos [X,Y]'].tolist()[0]
+            df_click = df[df['icon'].isin(['back_button.png','battle_icon.png','0cont_button.png','1quit.png'])]
+            if not df_click.empty:
+                button_pos=df_click['pos [X,Y]'].tolist()[0]
                 self.click_button(button_pos)
-                return avail_buttons,'menu'
-        else:
-            self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
-            return button_df,'lost'
+                return df,'menu'
+        self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
+        return df,'lost'
 ####
 #### END OF CLASS
 ####
@@ -346,35 +330,40 @@ def grid_meta_info(grid_df):
     group_keys = list(unit_series.index)
     return df_split,unit_series, df_groups, group_keys
 
-# Returns all elements which match tokens value
-def filter_keys(unit_series,tokens):
-    series= []
-    for token in tokens:
-        # check if given token is int, assume unit rank filter
-        if isinstance(token,int):
-            exists = unit_series.index.get_level_values('rank').isin([token]).any()
-            series.append(unit_series.xs(token, level='rank',drop_level=False) if exists else pd.Series(dtype=object))
-        else:
-            series.append(unit_series.xs(token, level='unit',drop_level=False) if token in unit_series else pd.Series(dtype=object))
-    return pd.concat(series)
-
 # Returns all elements which match tokens value with multiple levels
+# Either provide nested list of list, simple list or unit type/unit rank and if remove or not
+# Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
 def adv_filter_keys(unit_series,tokens,remove=False):
+    if unit_series.empty:
+        return unit_series
+    if not isinstance(tokens, list): # Make token a list if not already
+        tokens = [tokens]
     # Add detection of dimension in input tokens
     merge_series= unit_series
     for level in tokens:
+        if not isinstance(level, list): # Make token a list if not already
+            level = [level]
         series= []
         for token in level:
             # check if given token is int, assume unit rank filter
             if isinstance(token,int):
                 exists = merge_series.index.get_level_values('rank').isin([token]).any()
-                series.append(merge_series.xs(token, level='rank',drop_level=False) if exists else pd.Series(dtype=object))
-            else:
-                series.append(merge_series.xs(token, level='unit',drop_level=False) if token in merge_series else pd.Series(dtype=object))
-        merge_series = pd.concat(series)
-    if remove:
-        merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
-    return merge_series
+                if exists:
+                    series.append(merge_series.xs(token, level='rank',drop_level=False))
+                else: continue # skip if nothing matches criteria
+            elif isinstance(token,str):
+                if token in merge_series: 
+                    series.append(merge_series.xs(token, level='unit',drop_level=False))
+                else: continue
+        if not len(series)==0:
+            merge_series = pd.concat(series)
+            if remove:
+                merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
+            return merge_series
+        elif remove: # return empty list if empty and nothing matches criteria
+            return pd.Series(dtype=object)
+        else: unit_series # return unchanged list
+
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems
 def read_knowledge(bot):
     spam_click=trange(1000)
