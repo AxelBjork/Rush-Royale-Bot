@@ -335,7 +335,7 @@ def grid_meta_info(grid_df):
 # Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
 def adv_filter_keys(unit_series,tokens,remove=False):
     if unit_series.empty:
-        return unit_series
+        return pd.Series(dtype=object)
     if not isinstance(tokens, list): # Make token a list if not already
         tokens = [tokens]
     # Add detection of dimension in input tokens
@@ -362,7 +362,9 @@ def adv_filter_keys(unit_series,tokens,remove=False):
             return merge_series
         elif remove: # return empty list if empty and nothing matches criteria
             return pd.Series(dtype=object)
-        else: unit_series # return unchanged list
+        # Otherwise Do next loop with unchanged merge series otherwise
+    # Return result of all criterias
+    return merge_series
 
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems
 def read_knowledge(bot):
