@@ -183,7 +183,7 @@ class Bot:
         df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
         # Select stuff to merge
         # Find highest chemist rank
-        merge_series = unit_series
+        merge_series = unit_series.copy()
         merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
         if not merge_chemist.empty:
             max_chemist = merge_chemist.index.max()
@@ -196,7 +196,9 @@ class Bot:
             # Try to merge high priority units
             merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png']])
             if not merge_prio.empty:
+                info='Merging High Priority!'
                 merge_df = self.merge_unit(df_split,merge_prio)
+                return grid_df,unit_series,merge_df,info
             # Merge if full board
             if df_groups['empty.png']<=2:
                 info='Merging!'
@@ -339,7 +341,7 @@ def adv_filter_keys(unit_series,tokens,remove=False):
     if not isinstance(tokens, list): # Make token a list if not already
         tokens = [tokens]
     # Add detection of dimension in input tokens
-    merge_series= unit_series
+    merge_series= unit_series.copy()
     for level in tokens:
         if not isinstance(level, list): # Make token a list if not already
             level = [level]
@@ -360,7 +362,7 @@ def adv_filter_keys(unit_series,tokens,remove=False):
             if remove:
                 merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
             return merge_series
-        elif remove: # return empty list if empty and nothing matches criteria
+        elif not remove: # return empty list if empty and nothing matches criteria
             return pd.Series(dtype=object)
         # Otherwise Do next loop with unchanged merge series otherwise
     # Return result of all criterias
