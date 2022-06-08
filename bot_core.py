@@ -198,7 +198,6 @@ class Bot:
             if not merge_prio.empty:
                 info='Merging High Priority!'
                 merge_df = self.merge_unit(df_split,merge_prio)
-                return grid_df,unit_series,merge_df,info
             # Merge if full board
             if df_groups['empty.png']<=2:
                 info='Merging!'
@@ -216,7 +215,7 @@ class Bot:
             merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png']],remove=True)
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
-        return grid_df,unit_series,merge_df,info
+        return grid_df,unit_series,merge_series,merge_df,info
     # Mana level cards
     def mana_level(self,cards, hero_power=False):
         upgrade_pos_dict={
