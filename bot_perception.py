@@ -53,7 +53,7 @@ def match_unit(file_name,guess_unit=True):
         # Check matches
         if matches == 'No Matches':
              return ['icon_'+grid_id,'empty.png', 999]
-        if len(matches)>10:
+        if len(matches)>=10:
             for i in range(10):
                 match+=matches[i].distance
         else:
@@ -110,6 +110,8 @@ def find_polygon(edges,num=1):
     # Take n largest polygon in image
     #cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:num] # only closed loops
     cnts = sorted(cnts, key=lambda x: cv2.arcLength(x, False), reverse = True)[:num]
+    if len(cnts)==0:
+        return None
     if num==1:
         cnts=cnts[0]
     return cnts
@@ -127,13 +129,15 @@ def get_poly(filename,ref,i=4,shape=(120, 120),debug=False):
     img_match = cv2.GaussianBlur(img_match,(5,5),0)
     # pick top polygon
     cnts=find_polygon(img_match,1)
+    if cnts is None:
+       return [[[  0,   0]]]
     # Approximate Polygon         # Change arclength to expect of rank polygon
     i=3
     approx=cv2.approxPolyDP(cnts,1.5**i*0.01*cv2.arcLength(cnts,True),True)
     if debug:
         return approx,cnts,img_match,edges,img
     if approx is None:
-       return 0, [0]*4
+       return [[[  0,   0]]]
     return approx
 
 

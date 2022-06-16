@@ -62,9 +62,9 @@ class Bot:
     # Force restart the game through ADC, or spam 10 disconnects to abandon match
     def restart_RR(self,quick_disconnect=False):
             if quick_disconnect:
-                for i in range(40):
-                    self.shell(f'input keyevent {const.KEYCODE_APP_SWITCH}') #Go app switch
-                    return
+                for i in range(15):
+                    self.shell('monkey -p com.my.defense 1') # disconnects really quick for unknown reasons
+                return
             # Force kill game through ADB shell
             self.shell('am force-stop com.my.defense')
             time.sleep(2)
@@ -174,6 +174,52 @@ class Bot:
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
+    # Merge special units (harlequin, dryad, mime, scrapper)
+    def merge_special_unit(self,df_split,merge_series,merge_harley=False):
+        # Merge harley if exists
+        harley_merge, normal_unit = [adv_filter_keys(merge_series,'harlequin.png',remove=remove) for remove in [False,True]]
+        if not harley_merge.empty:
+            # Get corresponding dataframes
+            harley_merge, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [harley_merge, normal_unit]]
+            merge_df=pd.concat([harley_merge, normal_df])
+            # Do Harley merge
+            unit_chosen=merge_df['position'].tolist()
+            self.swipe(*unit_chosen)
+            time.sleep(0.2)
+            if merge_harley:
+                print('Double merged Harley!')
+                self.swipe(*unit_chosen)
+            return merge_df
+        # Get other special merge unit
+        special_unit, normal_unit=[adv_filter_keys(merge_series,[['dryad.png','mime.png','scrapper.png']],remove=remove) for remove in [False,True]] # scrapper support not tested
+        # Get corresponding dataframes
+        print(special_unit, normal_unit,merge_series)
+        special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
+        merge_df=pd.concat([special_df, normal_df])
+        # Merge 'em
+        unit_chosen=merge_df['position'].tolist()
+        self.swipe(*unit_chosen)
+        time.sleep(0.2)
+        print('Merged special!')
+        return merge_df
+    # Find targets for special merge
+    def special_merge(self,df_split,merge_series,target='zealot.png'):
+        merge_df = None
+        # Try to rank up dryads
+        dryads_series=adv_filter_keys(merge_series,'dryad.png')
+        if not dryads_series.empty:
+            dryads_rank = dryads_series.index.get_level_values('rank')
+            for rank in dryads_rank:
+                merge_series_dryad=adv_filter_keys(merge_series,[rank,['harlequin.png','dryad.png']])
+                merge_series_zealot=adv_filter_keys(merge_series,[rank,[target,'dryad.png']])
+                if len(merge_series_dryad.index)==2:
+                    merge_df = self.merge_special_unit(df_split,merge_series_dryad)
+                    break
+                if len(merge_series_zealot.index)==2:
+                    print(merge_series_zealot)
+                    merge_df = self.merge_special_unit(df_split,merge_series_zealot)
+                    break
+        return merge_df
     # Try to find a merge target and merge it
     def try_merge(self,rank=1,prev_grid=None):
         info=''
@@ -184,6 +230,8 @@ class Bot:
         # Select stuff to merge
         # Find highest chemist rank
         merge_series = unit_series.copy()
+        # Do special merge with dryad/Harley
+        self.special_merge(df_split,merge_series,target='crystal.png')
         merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
         if not merge_chemist.empty:
             max_chemist = merge_chemist.index.max()
@@ -289,6 +337,63 @@ class Bot:
                 return df,'menu'
         self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
         return df,'lost'
+    # Refresh items in shop when available 
+    def refresh_shop(self):
+        self.click_button((100,1500)) # Click store button
+        [self.swipe([0,0],[2,0]) for i in range(20)] # swipe to top
+        self.swipe([2,0],[0,0]) # Swipe down once
+        time.sleep(1)
+        self.click(30,150) # stop scroll
+        avail_buttons = self.get_current_icons(available=True)
+        if (avail_buttons == 'refresh_button.png').any(axis=None):
+            pos = get_button_pos(avail_buttons,'refresh_button.png')
+            # Buy first and last item (possible legendary) before refresh
+            #self.click_button(pos-[300,820]) # Click first (free) item
+            #self.click(400,1150) # buy
+            #self.click(30,150) # remove pop-up
+            #self.click_button(pos+[400,-400]) # Click first (free) item
+            #self.click(400,1150) # buy
+            print('Bought!')
+            self.click_button(pos)
+            print('refreshed!')
+        return avail_buttons
+    def watch_ads(self):
+        avail_buttons = self.get_current_icons(available=True)
+        # Watch ad if available
+        if (avail_buttons == 'quest_done.png').any(axis=None):
+            pos = get_button_pos(avail_buttons,'quest_done.png')
+            self.click_button(pos)
+            self.click(700,600) # collect second completed quest
+            self.click(700,400) # collect second completed quest
+            [self.click(150,250) for i in range(2)] # click dailies twice
+            self.click(420,420) # collect ad chest
+        elif (avail_buttons == 'ad_season.png').any(axis=None):
+            pos = get_button_pos(avail_buttons,'ad_season.png')
+            self.click_button(pos)
+        elif (avail_buttons == 'ad_pve.png').any(axis=None):
+            pos = get_button_pos(avail_buttons,'ad_pve.png')
+            self.click_button(pos)
+        elif (avail_buttons == 'store_refresh.png').any(axis=None):
+            self.refresh_shop()
+        elif (avail_buttons == 'refresh_button.png').any(axis=None):
+            self.refresh_shop()
+        else:
+            print('Watched all ads!')
+            return
+        # Keep watching until back in menu
+        for i in range(20):
+            avail_buttons,status = self.battle_screen()
+            if status =='menu':
+                print('FINISHED AD')
+                return
+            time.sleep(2)
+            self.click(870,30) # skip forward/click X
+            self.click(870,100) # click X playstore popup
+            self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
+            print('AD TIME',i,status)
+        # Restart game if can't escape ad
+        self.restart_RR()
+
 ####
 #### END OF CLASS
 ####
@@ -332,8 +437,9 @@ def grid_meta_info(grid_df):
     return df_split,unit_series, df_groups, group_keys
 
 # Returns all elements which match tokens value with multiple levels
-# Either provide nested list of list, simple list or unit type/unit rank and if remove or not
+# Either provide list of list, list or unit type/unit rank and if remove from series or out
 # Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
+# If filter is only list of unit types must be in nested list [['zealot.png','crystal.png']]
 def adv_filter_keys(unit_series,tokens,remove=False):
     if unit_series.empty:
         return pd.Series(dtype=object)
@@ -347,7 +453,6 @@ def adv_filter_keys(unit_series,tokens,remove=False):
             level = [level]
         series= []
         for token in level:
-            print(level,token)
             # check if given token is int, assume unit rank filter
             if isinstance(token,int):
                 exists = merge_series.index.get_level_values('rank').isin([token]).any()
@@ -387,3 +492,17 @@ def get_button_pos(df,button):
     #button=button+'.png'
     pos=df[df['icon']==button]['pos [X,Y]'].reset_index(drop=True)[0]
     return np.array(pos)
+
+
+# Move selected units from collection folder to deck folder for unit recognition options
+def select_units(units):
+    print(os.listdir("all_units")) 
+    print('Chosen:\n',units)
+    if os.path.isdir('units'):
+        [os.remove('units/'+unit) for unit in os.listdir("units")]
+    else: os.mkdir('units')
+    # Add empty unit if not already in list
+    if 'empty.png' not in units: units.append('empty.png')
+    # Read and write all images
+    for new_unit in units:
+        cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))
