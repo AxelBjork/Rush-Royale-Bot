@@ -114,6 +114,17 @@ class Bot:
             y = loc[0][0]
             x = loc[1][0]
             return [x, y]
+    def get_store_state(self):
+        x,y = [140,1412]
+        store_states_names = ['refresh','new_store','nothing','new_offer','spin_only']
+        store_states=np.array([[255, 255, 255],[ 27, 235, 206],[63, 38, 12],[ 48, 253, 251],[ 80, 153, 193]])
+        img_rgb = cv2.imread(self.screenshotName)
+        store_rgb = img_rgb[y:y + 1, x:x + 1]
+        store_rgb = store_rgb[0][0]
+        # Take mean square of rgb value and store states
+        store_mse=((store_states - store_rgb)**2).mean(axis=1)
+        closest_state=store_mse.argmin()
+        return store_states_names[closest_state]
     # Check if any icons are on screen
     def get_current_icons(self,new=True,available=False):
         current_icons=[]
@@ -337,8 +348,8 @@ class Bot:
                 return df,'menu'
         self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
         return df,'lost'
-    # Refresh items in shop when available 
-    def refresh_shop(self):
+    # Navigate and locate store refresh button from battle screen
+    def find_store_refresh(self):
         self.click_button((100,1500)) # Click store button
         [self.swipe([0,0],[2,0]) for i in range(20)] # swipe to top
         self.swipe([2,0],[0,0]) # Swipe down once
@@ -347,16 +358,32 @@ class Bot:
         avail_buttons = self.get_current_icons(available=True)
         if (avail_buttons == 'refresh_button.png').any(axis=None):
             pos = get_button_pos(avail_buttons,'refresh_button.png')
-            # Buy first and last item (possible legendary) before refresh
-            #self.click_button(pos-[300,820]) # Click first (free) item
-            #self.click(400,1150) # buy
-            #self.click(30,150) # remove pop-up
-            #self.click_button(pos+[400,-400]) # Click first (free) item
-            #self.click(400,1150) # buy
-            print('Bought!')
-            self.click_button(pos)
-            print('refreshed!')
-        return avail_buttons
+            return pos
+    # Refresh items in shop when available 
+    def refresh_shop(self):
+        store_state = self.get_store_state()
+        if store_state in ['nothing','spin_only']:
+            pass
+        elif store_state == 'new_offer':
+            self.click_button((100,1500)) # Click store button
+            self.click_button((500,1500)) # Click battle button
+            self.click_button((100,1500)) # Click store button
+        elif store_state == 'refresh':    
+            pos = self.find_store_refresh()
+            if not pos is None:
+                self.click_button(pos)
+                print('refreshed!')
+        elif store_state == 'new_store':    
+            pos = self.find_store_refresh()
+            if not pos is None:
+                # Buy first and last item (possible legendary) before refresh
+                self.click_button(pos-[300,820]) # Click first (free) item
+                self.click(400,1165) # buy
+                self.click(30,150) # remove pop-up
+                self.click_button(pos+[400,-400]) # Click last item (possible legendary)
+                self.click(400,1165) # buy
+                print('Bought!')
+        return store_state
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
         # Watch ad if available
@@ -373,10 +400,11 @@ class Bot:
         elif (avail_buttons == 'ad_pve.png').any(axis=None):
             pos = get_button_pos(avail_buttons,'ad_pve.png')
             self.click_button(pos)
-        elif (avail_buttons == 'store_refresh.png').any(axis=None):
-            self.refresh_shop()
-        elif (avail_buttons == 'refresh_button.png').any(axis=None):
-            self.refresh_shop()
+        elif (avail_buttons == 'battle_icon.png').any(axis=None):
+            store_state = self.refresh_shop()
+            if store_state == 'nothing':
+                print('Watched all ads!')
+                return
         else:
             print('Watched all ads!')
             return
@@ -495,9 +523,10 @@ def get_button_pos(df,button):
 
 
 # Move selected units from collection folder to deck folder for unit recognition options
-def select_units(units):
-    print(os.listdir("all_units")) 
-    print('Chosen:\n',units)
+def select_units(units,show=False):
+    if show:
+        print(os.listdir("all_units")) 
+        print('Chosen:\n',units)
     if os.path.isdir('units'):
         [os.remove('units/'+unit) for unit in os.listdir("units")]
     else: os.mkdir('units')
