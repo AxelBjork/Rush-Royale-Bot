@@ -302,3 +302,90 @@ def try_merge(self,rank=1,prev_grid=None):
     # Return result of all criterias
     print(555)
     return merge_series
+
+# auto add training data
+
+
+
+####
+#### Legacy Unit rank recognition (used to bootstrap ML model)
+####
+
+# show calculated polygon
+def show_contour(cnts,shape=(120, 120)):
+    canvas = np.zeros(shape, np.uint8)
+    img_shape=cv2.drawContours(canvas, [cnts], -1, 255, 3)
+    return img_shape
+
+def find_polygon(edges,num=1):
+    # Find Contours in image
+    cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    # Take n largest polygon in image
+    #cnts = sorted(cnts, key = cv2.contourArea, reverse = True)[:num] # only closed loops
+    cnts = sorted(cnts, key=lambda x: cv2.arcLength(x, False), reverse = True)[:num]
+    if len(cnts)==0:
+        return None
+    if num==1:
+        cnts=cnts[0]
+    return cnts
+
+def get_poly(filename,ref,i=4,shape=(120, 120),debug=False):
+    # read image as grayscale
+    img = cv2.imread(filename,0)
+    # Find edges in image
+    edges = cv2.Canny(img,50,100)
+    # read reference image
+    img_ref = cv2.imread(ref,0)
+    img_ref = cv2.GaussianBlur(img_ref,(5,5),0)
+    # Apply filter
+    img_match = edges &img_ref
+    img_match = cv2.GaussianBlur(img_match,(5,5),0)
+    # pick top polygon
+    cnts=find_polygon(img_match,1)
+    if cnts is None:
+       return [[[  0,   0]]]
+    # Approximate Polygon         # Change arclength to expect of rank polygon
+    i=3
+    approx=cv2.approxPolyDP(cnts,1.5**i*0.01*cv2.arcLength(cnts,True),True)
+    if debug:
+        return approx,cnts,img_match,edges,img
+    if approx is None:
+       return [[[  0,   0]]]
+    return approx
+
+# Find nearest coordinate in 2D using mean square error
+def mean_square(array, coord):
+    # take MSE (mean square error)
+    coord_mse = ((array-coord)**2).mean(axis=2)
+    idx=coord_mse.argmin()
+    return coord_mse[idx][0]
+# Run mean square of all ranks
+
+
+# Returns guess of unit rank
+def match_rank_old(filename):
+    # Load dictionary with expected corner positions
+    corner_dict={
+    'rank2':np.array([[10,10],[110,110]]),
+    'rank3':np.array([[5,10],[115,10],[60,110]]),
+    'rank4':np.array([[60,0],[0,60],[60,120],[120,60]]),
+    'rank5':np.array([[15,10],[15,80],[60,115],[105,80],[105,10]]),    
+        }
+    match_errors=[]
+    for rank in corner_dict:
+        target=f'unit_rank/{rank}_bin.png'
+        # Get polygon of image
+        target_corners=get_poly(filename,target)
+        polygon_error = 0
+        # Take mean square loss for each corner
+        for corner in corner_dict[rank]:
+            polygon_error += mean_square(target_corners,corner)
+        match_errors.append(polygon_error)
+    # Prefer higher ranks 
+    match_errors = match_errors *np.array([10,3,2,1])
+    np.array(match_errors)
+    rank_guess=np.array(match_errors).argmin()
+    if match_errors[rank_guess]>1000:
+        rank_guess = -1 # rank 1 if none are good match
+    return rank_guess+2, match_errors[rank_guess]
