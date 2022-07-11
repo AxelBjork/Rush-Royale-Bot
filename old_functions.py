@@ -30,6 +30,9 @@ def battle_screen(start=False):
         bot.click_button(pvp_pos)
     return pos,pvp_pos
 
+# Check if combat is over
+if len(bot.get_current_icons(False,available=True,selected=['fighting.png']))==0:
+    break
 
 #Match unit in grid
 def match_unit(file_name,guess_unit=True):

@@ -23,6 +23,7 @@ class Bot:
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         self.screenshotName = self.device + '-screenshot.png'
+        self.screenRGB = cv2.imread(self.screenshotName)
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
         self.client = Client(device=self.device)
         # Start scrcpy client
@@ -76,14 +77,14 @@ class Bot:
         self.shell(f'/system/bin/screencap -p /sdcard/{self.screenshotName}')
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
         os.system(f'"C:/Programs/Scrcpy/adb" -s {self.device} pull /sdcard/{self.screenshotName}')
+        # Store screenshot in class variable
+        self.screenRGB = cv2.imread(self.screenshotName)
+
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
         # Load screen
-        img_rgb = cv2.imread(self.screenshotName)
+        img_rgb = self.screenRGB
         img_rgb = img_rgb[y:y + dy, x:x + dx]
-        # Convert to grayscale (done internally by tessarct )
-        #img_rgb = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
-        #(a, img_gray) = cv2.threshold(img_rgb, 127, 255, cv2.THRESH_BINARY)
         cv2.imwrite(name, img_rgb)
     # Perform OCR on target area
     def getText(self, x, y, dx, dy,new=True,digits=False):
@@ -96,6 +97,8 @@ class Bot:
         else:
             ocr_text = pytesseract.image_to_string('icon.png',config='--psm 13').replace('\n', '')#.replace(' ', '')
         return (ocr_text)
+    def getMana(self):
+        return int(self.getText(220,1360,90,50,new=False,digits=True))
     # find icon on screen
     def getXYByImage(self, target,new=True):
         valid_targets = ['battle_icon','pvp_button','back_button','cont_button','fighting']
@@ -103,11 +106,10 @@ class Bot:
             return "INVALID TARGET" 
         if new: self.getScreen()
         imgSrc=f'icons/{target}.png'
-        img_rgb = cv2.imread(f"{self.screenshotName}")
+        img_rgb = self.screenRGB
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
         template = cv2.imread(imgSrc, 0)
         res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         threshold = 0.8
         loc = np.where(res >= threshold)
         if len(loc[0]) > 0:
@@ -130,7 +132,7 @@ class Bot:
         current_icons=[]
         # Update screen and load screenshot as grayscale
         if new: self.getScreen()
-        img_rgb = cv2.imread(f"{self.screenshotName}")
+        img_rgb = self.screenRGB
         img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
         # Check every target in dir
         for target in os.listdir("icons"):
@@ -141,7 +143,6 @@ class Bot:
             template = cv2.imread(imgSrc, 0)
             # Compare images
             res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
             threshold = 0.8
             loc = np.where(res >= threshold)
             icon_found = len(loc[0]) > 0
@@ -161,6 +162,8 @@ class Bot:
         if new: self.getScreen()
         box_list = boxes.reshape(15,2)
         names=[]
+        if not os.path.isdir('OCR_inputs'):
+            os.mkdir('OCR_inputs')
         for i in range(len(box_list)):
             file_name = f'OCR_inputs/icon_{str(i)}.png'
             self.crop_img(*box_list[i],*box_size,name=file_name)
@@ -180,7 +183,7 @@ class Bot:
         else: 
             return merge_df
         # Extract unit position from dataframe
-        unit_chosen=merge_df['position'].tolist()
+        unit_chosen=merge_df['grid_pos'].tolist()
         # Send Merge 
         self.swipe(*unit_chosen)
         time.sleep(0.2)
@@ -194,7 +197,7 @@ class Bot:
             harley_merge, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [harley_merge, normal_unit]]
             merge_df=pd.concat([harley_merge, normal_df])
             # Do Harley merge
-            unit_chosen=merge_df['position'].tolist()
+            unit_chosen=merge_df['grid_pos'].tolist()
             self.swipe(*unit_chosen)
             time.sleep(0.2)
             if merge_harley:
@@ -208,7 +211,7 @@ class Bot:
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
         merge_df=pd.concat([special_df, normal_df])
         # Merge 'em
-        unit_chosen=merge_df['position'].tolist()
+        unit_chosen=merge_df['grid_pos'].tolist()
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         print('Merged special!')
@@ -239,7 +242,6 @@ class Bot:
         grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
         df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
         # Select stuff to merge
-        # Find highest chemist rank
         merge_series = unit_series.copy()
         # Do special merge with dryad/Harley
         self.special_merge(df_split,merge_series,target='crystal.png')
@@ -275,6 +277,7 @@ class Bot:
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_series,merge_df,info
+
     # Mana level cards
     def mana_level(self,cards, hero_power=False):
         upgrade_pos_dict={
@@ -331,13 +334,13 @@ class Bot:
             if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None) in df:
                 return df,'fighting'
             # Start pvp if homescreen   
-            if start and (df == 'pvp_button.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
-                pvp_pos = get_button_pos(df,'pvp_button.png')
-                if pve:
+            if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
+                if pve and start:
                     # Add a 500 pixel offset for PvE button
-                    self.click_button(pvp_pos+[500,0])
+                    self.click_button(np.array([ 640, 1259]))
                     self.play_dungeon(floor=floor)
-                else: self.click_button(pvp_pos)
+                elif start:
+                    self.click_button(np.array([ 140, 1259]))
                 time.sleep(1)
                 return df, 'home'
             # Check first button is clickable
@@ -411,7 +414,7 @@ class Bot:
         # Keep watching until back in menu
         for i in range(20):
             avail_buttons,status = self.battle_screen()
-            if status =='menu':
+            if status =='menu' or status =='home':
                 print('FINISHED AD')
                 return
             time.sleep(2)
@@ -530,8 +533,6 @@ def select_units(units,show=False):
     if os.path.isdir('units'):
         [os.remove('units/'+unit) for unit in os.listdir("units")]
     else: os.mkdir('units')
-    # Add empty unit if not already in list
-    if 'empty.png' not in units: units.append('empty.png')
     # Read and write all images
     for new_unit in units:
         cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))

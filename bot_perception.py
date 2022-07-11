@@ -77,13 +77,13 @@ def grid_status(names,prev_grid=None):  # Add multithreading of match unit, matc
         unit_guess= match_unit(filename)
         rank,rank_prob= match_rank(filename)
         grid_stats.append([*unit_guess,rank,rank_prob])
-    grid_df=pd.DataFrame(grid_stats, columns=['grid_id','unit','probability','rank','rank_prob'])
+    grid_df=pd.DataFrame(grid_stats, columns=['grid_pos','unit','probability','rank','rank_prob'])
     # Add grid position 
     box_id=[[(i//5)%5,i%5] for i in range(15)]
-    grid_df['position']=box_id
+    grid_df['grid_pos']=box_id
     if not prev_grid is None:
         # Check Consistency
-        consistency = grid_df[['grid_id','unit','rank']] ==prev_grid[['grid_id','unit','rank']]
+        consistency = grid_df[['grid_pos','unit','rank']] ==prev_grid[['grid_pos','unit','rank']]
         consistency = consistency.all(axis=1)
         # Update age from previous grid
         grid_df['Age']=prev_grid['Age'] * consistency
