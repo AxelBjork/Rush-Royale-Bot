@@ -2,13 +2,9 @@ import os
 import time
 import numpy as np
 import pandas as pd
-import random
-from tqdm.notebook import trange, tqdm
 # Android ADB
 from scrcpy import Client, const
-import threading
 # Image processing
-from PIL import Image
 import cv2
 import pytesseract
 # internal
@@ -244,7 +240,7 @@ class Bot:
         # Select stuff to merge
         merge_series = unit_series.copy()
         # Do special merge with dryad/Harley
-        self.special_merge(df_split,merge_series,target='crystal.png')
+        self.special_merge(df_split,merge_series,target='zealot.png')
         merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
         if not merge_chemist.empty:
             max_chemist = merge_chemist.index.max()
@@ -272,8 +268,10 @@ class Bot:
         # If grid seems full, merge more units
         else:
             info = 'Full Grid - Merging!'
-            # Remove all high level crystals and zealots
-            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png']],remove=True)
+            # Remove all high level dps units
+            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png','bruser.png']],remove=True)
+            # Remove cauldrons
+            merge_series = adv_filter_keys(merge_series,[1,['cauldron.png']],remove=True)
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_series,merge_df,info
@@ -416,7 +414,7 @@ class Bot:
             avail_buttons,status = self.battle_screen()
             if status =='menu' or status =='home':
                 print('FINISHED AD')
-                return
+                return # Exit function
             time.sleep(2)
             self.click(870,30) # skip forward/click X
             self.click(870,100) # click X playstore popup
@@ -515,7 +513,7 @@ def adv_filter_keys(unit_series,tokens,remove=False):
 
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems
 def read_knowledge(bot):
-    spam_click=trange(1000)
+    spam_click=range(1000)
     for i in spam_click:
         bot.click(450,1300,0.1)
 

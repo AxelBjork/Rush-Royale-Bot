@@ -44,7 +44,6 @@ def match_unit(file_name,guess_unit=True):
     img_gray = cv2.imread(file_name,cv2.IMREAD_GRAYSCALE)
     # Check every target in dir
     for target in os.listdir("units"):
-        grid_id=file_name.split('_')[2].split('.')[0]
         # Load icon, 90x90 pixel out of 120 pixel box
         imgSrc=f'units/{target}'
         template = cv2.imread(imgSrc,cv2.IMREAD_GRAYSCALE)
@@ -53,14 +52,14 @@ def match_unit(file_name,guess_unit=True):
         matches = feature_match(template,img_gray)
         # Check matches
         if matches == 'No Matches':
-             return ['icon_'+grid_id,'empty.png', 999]
+             return ['empty.png', 999]
         if len(matches)>=10:
             for i in range(10):
                 match+=matches[i].distance
         else:
             match=700
         current_icons.append([target,match,len(matches)])
-    unit_df=pd.DataFrame(current_icons, columns=['icon_'+grid_id,'feature_distance','num_match'])
+    unit_df=pd.DataFrame(current_icons, columns=['unit','feature_distance','num_match'])
     if not guess_unit:
         return unit_df
     if guess_unit:
@@ -68,19 +67,19 @@ def match_unit(file_name,guess_unit=True):
         unit_pred = guess[0]
         if guess[1] == 700:
             unit_pred = 'empty.png'
-        return [unit_df.columns[0],unit_pred,guess[1]]
+        return [unit_pred,guess[1]]
 
 # Get status of current grid
 def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
     grid_stats=[]
     for filename in names:
-        unit_guess= match_unit(filename)
         rank,rank_prob= match_rank(filename)
+        unit_guess= match_unit(filename) if rank !=0 else ['empty.png',0]
         grid_stats.append([*unit_guess,rank,rank_prob])
-    grid_df=pd.DataFrame(grid_stats, columns=['grid_pos','unit','probability','rank','rank_prob'])
+    grid_df=pd.DataFrame(grid_stats, columns=['unit','probability','rank','rank_prob'])
     # Add grid position 
     box_id=[[(i//5)%5,i%5] for i in range(15)]
-    grid_df['grid_pos']=box_id
+    grid_df.insert(0,'grid_pos',box_id)
     if not prev_grid is None:
         # Check Consistency
         consistency = grid_df[['grid_pos','unit','rank']] ==prev_grid[['grid_pos','unit','rank']]
