@@ -22,6 +22,7 @@ import bot_core
 def feature_match(img_query,img_train):
         # Initiate ORB detector
         orb = cv2.ORB_create()
+        orb.setFastThreshold(0)
         # find the keypoints and descriptors with ORB
         kp1, des1 = orb.detectAndCompute(img_query,None) # queryImage
         kp2, des2 = orb.detectAndCompute(img_train,None) # trainImage
@@ -31,8 +32,6 @@ def feature_match(img_query,img_train):
         bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
         # Match descriptors.
         matches = bf.match(des1,des2)
-        #if len(matches)==0: # if no matches are found, return
-        #    return 'No Matches'
         # Sort them in the order of their distance.
         matches = sorted(matches, key = lambda x:x.distance)
         return matches
@@ -41,33 +40,33 @@ def feature_match(img_query,img_train):
 def match_unit(file_name,guess_unit=True):
     # Compare each channel
     current_icons=[]
-    img_gray = cv2.imread(file_name,cv2.IMREAD_GRAYSCALE)
+    img_rgb = cv2.imread(file_name)
     # Check every target in dir
     for target in os.listdir("units"):
         # Load icon, 90x90 pixel out of 120 pixel box
         imgSrc=f'units/{target}'
-        template = cv2.imread(imgSrc,cv2.IMREAD_GRAYSCALE)
+        template_rgb = cv2.imread(imgSrc)
         match=0
-        # Do feature detection
-        matches = feature_match(template,img_gray)
-        # Check matches
-        if matches == 'No Matches':
-             return ['empty.png', 999]
-        if len(matches)>=10:
-            for i in range(10):
-                match+=matches[i].distance
-        else:
-            match=700
+        for color in range(3):
+            template = template_rgb[:,:,color]
+            img_color = img_rgb[:,:,color]
+            # Do feature detection
+            matches = feature_match(template,img_color)
+            # Check matches
+            if matches == 'No Matches':
+                 return ['empty.png', 999]
+            if len(matches)>=10:
+                for i in range(10):
+                    match+=matches[i].distance
         current_icons.append([target,match,len(matches)])
     unit_df=pd.DataFrame(current_icons, columns=['unit','feature_distance','num_match'])
     if not guess_unit:
         return unit_df
     if guess_unit:
         guess=unit_df.loc[unit_df['feature_distance'].idxmin()] # select empty if all 700
-        unit_pred = guess[0]
-        if guess[1] == 700:
-            unit_pred = 'empty.png'
-        return [unit_pred,guess[1]]
+        # Certainty of guess (estimate)
+        certainty = round(1 - (guess[1]/unit_df['feature_distance'].sum()),3)
+        return [guess[0],certainty]
 
 # Get status of current grid
 def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
