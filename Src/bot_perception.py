@@ -37,10 +37,10 @@ def feature_match(img_query,img_train):
         return matches
 
 
-def match_unit(file_name,guess_unit=True):
+def match_unit(filename,guess_unit=True):
     # Compare each channel
     current_icons=[]
-    img_rgb = cv2.imread(file_name)
+    img_rgb = cv2.imread(filename)
     # Check every target in dir
     for target in os.listdir("units"):
         # Load icon, 90x90 pixel out of 120 pixel box

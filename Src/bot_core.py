@@ -2,6 +2,7 @@ import os
 import time
 import numpy as np
 import pandas as pd
+from subprocess import check_output,Popen
 # Android ADB
 from scrcpy import Client, const
 # Image processing
@@ -70,9 +71,11 @@ class Bot:
             time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
     def getScreen(self):
-        self.shell(f'/system/bin/screencap -p /sdcard/{self.screenshotName}')
+        p=Popen(['C:/Programs/Scrcpy/adb', 'shell','/system/bin/screencap', '-p', f'/sdcard/{self.screenshotName}'])
+        p.wait()
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        os.system(f'"C:/Programs/Scrcpy/adb" -s {self.device} pull /sdcard/{self.screenshotName}')
+        p=Popen(['C:/Programs/Scrcpy/adb', 'pull', f'/sdcard/{self.screenshotName}'])
+        p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread(self.screenshotName)
 
@@ -246,8 +249,12 @@ class Bot:
             max_chemist = merge_chemist.index.max()
             # Remove 1 count of highest rank chemist
             merge_series[merge_series.index == max_chemist] = merge_series[merge_series.index == max_chemist] - 1
+        # Remove cauldrons
+        merge_cauldron = adv_filter_keys(merge_series,[1,['cauldron.png']],remove=False)
+        if not merge_cauldron.empty:
+            merge_series[merge_series.index == ('cauldron.png', 1)] = merge_series[merge_series.index == ('cauldron.png', 1)] - 4
         # Select stuff to merge
-        merge_series = merge_series[merge_series>=2] # At least 2 units ## ADD MIME to every count, use sample rank and check if mime exist
+        merge_series = merge_series[merge_series>=2] # At least 2 units
         # check if grid full
         if ('empty.png',0) in group_keys:
             # Try to merge high priority units
@@ -270,8 +277,6 @@ class Bot:
             info = 'Full Grid - Merging!'
             # Remove all high level dps units
             merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png','bruser.png']],remove=True)
-            # Remove cauldrons
-            merge_series = adv_filter_keys(merge_series,[1,['cauldron.png']],remove=True)
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_series,merge_df,info
@@ -403,14 +408,15 @@ class Bot:
             self.click_button(pos)
         elif (avail_buttons == 'battle_icon.png').any(axis=None):
             store_state = self.refresh_shop()
-            if store_state == 'nothing':
+            if store_state == 'nothing' or store_state == 'spin_only':
                 print('Watched all ads!')
                 return
         else:
             print('Watched all ads!')
             return
+        time.sleep(30)
         # Keep watching until back in menu
-        for i in range(20):
+        for i in range(10):
             avail_buttons,status = self.battle_screen()
             if status =='menu' or status =='home':
                 print('FINISHED AD')
@@ -418,7 +424,8 @@ class Bot:
             time.sleep(2)
             self.click(870,30) # skip forward/click X
             self.click(870,100) # click X playstore popup
-            self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
+            if i >5:
+                self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
             print('AD TIME',i,status)
         # Restart game if can't escape ad
         self.restart_RR()
@@ -458,6 +465,7 @@ def get_unit_count(grid_df):
 def grid_meta_info(grid_df):
     # Split by unique unit
     df_groups=get_unit_count(grid_df)[1]
+    grid_df = grid_df[grid_df['Age']>=3].reset_index(drop=True)
     df_split=grid_df.groupby(['unit','rank'])
     # Count number of unit of each rank
     unit_series=df_split['unit'].count()
