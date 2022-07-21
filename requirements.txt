@@ -1,0 +1,9 @@
+numpy==1.23.1
+pandas==1.4.3
+Pillow==9.2.0
+scikit_learn==1.1.1
+scrcpy==0.0.4
+ipykernel
+tqdm
+opencv-python
+ipywidgets
