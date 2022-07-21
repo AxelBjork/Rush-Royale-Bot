@@ -187,24 +187,10 @@ class Bot:
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
-    # Merge special units (harlequin, dryad, mime, scrapper)
-    def merge_special_unit(self,df_split,merge_series,merge_harley=False):
-        # Merge harley if exists
-        harley_merge, normal_unit = [adv_filter_keys(merge_series,'harlequin.png',remove=remove) for remove in [False,True]]
-        if not harley_merge.empty:
-            # Get corresponding dataframes
-            harley_merge, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [harley_merge, normal_unit]]
-            merge_df=pd.concat([harley_merge, normal_df])
-            # Do Harley merge
-            unit_chosen=merge_df['grid_pos'].tolist()
-            self.swipe(*unit_chosen)
-            time.sleep(0.2)
-            if merge_harley:
-                print('Double merged Harley!')
-                self.swipe(*unit_chosen)
-            return merge_df
-        # Get other special merge unit
-        special_unit, normal_unit=[adv_filter_keys(merge_series,[['dryad.png','mime.png','scrapper.png']],remove=remove) for remove in [False,True]] # scrapper support not tested
+    # Merge special units ['harlequin.png','dryad.png','mime.png','scrapper.png']
+    def merge_special_unit(self,df_split,merge_series,special_type):
+        # Get special merge unit
+        special_unit, normal_unit=[adv_filter_keys(merge_series,special_type,remove=remove) for remove in [False,True]] # scrapper support not tested
         # Get corresponding dataframes
         print(special_unit, normal_unit,merge_series)
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
@@ -226,15 +212,15 @@ class Bot:
                 merge_series_dryad=adv_filter_keys(merge_series,[rank,['harlequin.png','dryad.png']])
                 merge_series_zealot=adv_filter_keys(merge_series,[rank,[target,'dryad.png']])
                 if len(merge_series_dryad.index)==2:
-                    merge_df = self.merge_special_unit(df_split,merge_series_dryad)
+                    merge_df = self.merge_special_unit(df_split,merge_series_dryad,special_type='harlequin.png')
                     break
                 if len(merge_series_zealot.index)==2:
                     print(merge_series_zealot)
-                    merge_df = self.merge_special_unit(df_split,merge_series_zealot)
+                    merge_df = self.merge_special_unit(df_split,merge_series_zealot,special_type='dryad.png')
                     break
         return merge_df
     # Try to find a merge target and merge it
-    def try_merge(self,rank=1,prev_grid=None):
+    def try_merge(self,rank=1,prev_grid=None,merge_target='zealot.png'):
         info=''
         merge_df =None
         names=self.scan_grid(new=True)
@@ -243,7 +229,7 @@ class Bot:
         # Select stuff to merge
         merge_series = unit_series.copy()
         # Do special merge with dryad/Harley
-        self.special_merge(df_split,merge_series,target='zealot.png')
+        self.special_merge(df_split,merge_series,merge_target)
         merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
         if not merge_chemist.empty:
             max_chemist = merge_chemist.index.max()
@@ -258,7 +244,7 @@ class Bot:
         # check if grid full
         if ('empty.png',0) in group_keys:
             # Try to merge high priority units
-            merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png']])
+            merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png','summoner.png']])
             if not merge_prio.empty:
                 info='Merging High Priority!'
                 merge_df = self.merge_unit(df_split,merge_prio)
@@ -276,7 +262,7 @@ class Bot:
         else:
             info = 'Full Grid - Merging!'
             # Remove all high level dps units
-            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png','bruser.png']],remove=True)
+            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png','bruser.png',merge_target]],remove=True)
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_series,merge_df,info
@@ -408,6 +394,7 @@ class Bot:
             self.click_button(pos)
         elif (avail_buttons == 'battle_icon.png').any(axis=None):
             store_state = self.refresh_shop()
+            store_state = 'nothing'
             if store_state == 'nothing' or store_state == 'spin_only':
                 print('Watched all ads!')
                 return
