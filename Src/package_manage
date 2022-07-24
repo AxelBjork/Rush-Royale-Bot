@@ -1,0 +1,9 @@
+import importlib
+
+# Conda activate
+!conda activate py3
+# Conda create env
+!conda create -n rr_bot python=3.9
+!cd C:\vscode\Rush-Royale-Bot
+# Install reqs
+!pip install -r requirements.txt

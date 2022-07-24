@@ -1,27 +1,35 @@
 import os
 import time
+from datetime import datetime
 import numpy as np
 import pandas as pd
+import logging
 from subprocess import check_output,Popen
 # Android ADB
 from scrcpy import Client, const
 # Image processing
 import cv2
-import pytesseract
 # internal
 import bot_perception
+import configparser
 
+config = configparser.ConfigParser()
+# Read the config file
+config.read('config.ini')
+# Get the values from the config file
+scrcpy_path=config['bot']['scrcpy_path']
 
 SLEEP_DELAY=0.1
 
 class Bot:
-    def __init__(self):
-        self.device = 'emulator-5554'
+    def __init__(self,device='emulator-5554'):
+        self.logger = setup_logger()
+        self.device = device if device else 'emulator-5554'
+        self.shell(f'{os.path.join(scrcpy_path,"adb")} connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
-        self.screenshotName = self.device + '-screenshot.png'
+        self.screenshotName = 'bot_feed.png'
         self.screenRGB = cv2.imread(self.screenshotName)
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
         self.client = Client(device=self.device)
         # Start scrcpy client
         self.client.start(threaded=True)
@@ -34,7 +42,7 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'"C:/Programs/Scrcpy/adb" -s {self.device} shell {cmd}')
+        os.system(f'{os.path.join(scrcpy_path,"adb")} -s {self.device} shell {cmd}')
     # Send ADB to click screen
     def click(self, x, y,delay_mult=1):
         self.client.control.touch(x, y, const.ACTION_DOWN)
@@ -71,10 +79,10 @@ class Bot:
             time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
     def getScreen(self):
-        p=Popen(['C:/Programs/Scrcpy/adb', 'shell','/system/bin/screencap', '-p', f'/sdcard/{self.screenshotName}'])
+        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
         p.wait()
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p=Popen(['C:/Programs/Scrcpy/adb', 'pull', f'/sdcard/{self.screenshotName}'])
+        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'pull', '/sdcard/bot_feed.png'])
         p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread(self.screenshotName)
@@ -85,17 +93,6 @@ class Bot:
         img_rgb = self.screenRGB
         img_rgb = img_rgb[y:y + dy, x:x + dx]
         cv2.imwrite(name, img_rgb)
-    # Perform OCR on target area
-    def getText(self, x, y, dx, dy,new=True,digits=False):
-        if new: self.getScreen()
-        # crop image
-        self.crop_img(x, y, dx, dy)
-        # Do OCR with Google Tesseract
-        if digits:
-            ocr_text = pytesseract.image_to_string('icon.png',config='--psm 13 --oem 3 -c tessedit_char_whitelist=0123456789').replace('\n', '')
-        else:
-            ocr_text = pytesseract.image_to_string('icon.png',config='--psm 13').replace('\n', '')#.replace(' ', '')
-        return (ocr_text)
     def getMana(self):
         return int(self.getText(220,1360,90,50,new=False,digits=True))
     # find icon on screen
@@ -320,7 +317,7 @@ class Bot:
         df = self.get_current_icons(available=True)
         if not df.empty:
             # list of buttons
-            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None) in df:
+            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
                 return df,'fighting'
             # Start pvp if homescreen   
             if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
@@ -449,10 +446,10 @@ def get_unit_count(grid_df):
 
 # Split grid df into unique units and ranks
 # Shows total count of unit and count of each rank
-def grid_meta_info(grid_df):
+def grid_meta_info(grid_df,min_age=0):
     # Split by unique unit
     df_groups=get_unit_count(grid_df)[1]
-    grid_df = grid_df[grid_df['Age']>=3].reset_index(drop=True)
+    grid_df = grid_df[grid_df['Age']>=min_age].reset_index(drop=True)
     df_split=grid_df.groupby(['unit','rank'])
     # Count number of unit of each rank
     unit_series=df_split['unit'].count()
@@ -529,3 +526,18 @@ def select_units(units,show=False):
     # Read and write all images
     for new_unit in units:
         cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))
+
+def setup_logger():
+    logging.basicConfig(filename='RR_bot.log',level=logging.INFO)
+    # Delete previous log file
+    if os.path.exists('RR_bot.log'):
+        try:
+            os.remove('RR_bot.log')
+        except PermissionError:
+            print('Log file is already open')
+            return
+    # Set log format and dateformat
+    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__+'.RR_Bot')
+    logger.info('Initializing bot')
+    return logger
