@@ -11,7 +11,13 @@ from scrcpy import Client, const
 import cv2
 # internal
 import bot_perception
+import configparser
 
+config = configparser.ConfigParser()
+# Read the config file
+config.read('config.ini')
+# Get the values from the config file
+scrcpy_path=config['bot']['scrcpy_path']
 
 SLEEP_DELAY=0.1
 
@@ -19,7 +25,7 @@ class Bot:
     def __init__(self,device='emulator-5554'):
         self.logger = setup_logger()
         self.device = device if device else 'emulator-5554'
-        self.shell(f'adb connect {self.device}')
+        self.shell(f'{os.path.join(scrcpy_path,"adb")} connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         self.screenshotName = 'bot_feed.png'
@@ -36,7 +42,7 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'adb -s {self.device} shell {cmd}')
+        os.system(f'{os.path.join(scrcpy_path,"adb")} -s {self.device} shell {cmd}')
     # Send ADB to click screen
     def click(self, x, y,delay_mult=1):
         self.client.control.touch(x, y, const.ACTION_DOWN)
@@ -73,10 +79,10 @@ class Bot:
             time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
     def getScreen(self):
-        p=Popen(['adb','-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
+        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
         p.wait()
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p=Popen(['adb','-s',self.device, 'pull', '/sdcard/bot_feed.png'])
+        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'pull', '/sdcard/bot_feed.png'])
         p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread(self.screenshotName)
@@ -311,7 +317,7 @@ class Bot:
         df = self.get_current_icons(available=True)
         if not df.empty:
             # list of buttons
-            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None) in df:
+            if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
                 return df,'fighting'
             # Start pvp if homescreen   
             if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):

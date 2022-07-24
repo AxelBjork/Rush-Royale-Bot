@@ -4,6 +4,8 @@ from _thread import *
 import threading
 import os
 from subprocess import check_output
+import configparser
+
 
 # Connects to a target IP and port
 def connect_port (ip,port,open_ports):
@@ -38,11 +40,16 @@ def scan_ports(target_ip,port_start,port_end):
 
 # Attemtps to connect ADB over every port provided
 def scan_ADB(port_list):
+    config = configparser.ConfigParser()
+    # Read the config file
+    config.read('config.ini')
+    # Get the values from the config file
+    scrcpy_path=config['bot']['scrcpy_path']
     # Try to connect every open port in range
     for device in port_list:
-        os.system(f'adb connect 127.0.0.1:{device}')
+        os.system(f'{os.path.join(scrcpy_path,"adb")} connect 127.0.0.1:{device}')
     # Check all connected adb devices
-    devList = check_output('adb devices')
+    devList = check_output(f'{os.path.join(scrcpy_path,"adb")} devices')
     devListArr = str(devList).split('\\n')
     # Check for online status
     for client in devListArr[1:]:
