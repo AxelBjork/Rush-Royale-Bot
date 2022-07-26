@@ -50,7 +50,7 @@ Settings:
 
 (Advanced) Android Debug Bridge: Enabled - Note the port number here
 
-Setup google acconut, download rush royale, ect.
+Setup google account, download rush royale, ect.
 
 **Scrcpy**
 
