@@ -24,7 +24,7 @@ SLEEP_DELAY=0.1
 class Bot:
     def __init__(self,device='emulator-5554'):
         self.logger = setup_logger()
-        self.device = device if device else 'emulator-5554'
+        self.device = device
         self.shell(f'{os.path.join(scrcpy_path,"adb")} connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')

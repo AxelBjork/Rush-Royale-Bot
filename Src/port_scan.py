@@ -7,16 +7,20 @@ from subprocess import check_output
 import configparser
 
 
-# Connects to a target IP and port
+# Connects to a target IP and port, if port is open try to connect adb
 def connect_port (ip,port,open_ports):
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    scrcpy_path=config['bot']['scrcpy_path']
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result = s.connect_ex((ip,port))
     if result == 0:
         open_ports[port]='open'
+        os.system(f'{os.path.join(scrcpy_path,"adb")} connect 127.0.0.1:{port}')
     return result == 0
 
 # Attemtps to connect to ip over every port in range
-# Returns list of open ports
+# Returns device if found
 def scan_ports(target_ip,port_start,port_end):
     threads = []
     open_ports = {}
@@ -27,6 +31,8 @@ def scan_ports(target_ip,port_start,port_end):
     for port in port_range:
         thread = threading.Thread(target=connect_port, args=(target_ip, port, open_ports))
         threads.append(thread)
+    # Also try default 5555 port
+    threads.append(threading.Thread(target=connect_port, args=(target_ip, 5555, open_ports)))
     # Attempt to connect to every port
     for i in range(len(port_range)):
         threads[i].start()
@@ -36,32 +42,33 @@ def scan_ports(target_ip,port_start,port_end):
     # Get open ports
     port_list = list(open_ports.keys())
     print(f"Ports Open: {port_list}")
-    return port_list
+    deivce = get_adb_device()
+    return deivce
 
-# Attemtps to connect ADB over every port provided
-def scan_ADB(port_list):
+# Check if adb device is already connected 
+def get_adb_device():
     config = configparser.ConfigParser()
-    # Read the config file
     config.read('config.ini')
-    # Get the values from the config file
     scrcpy_path=config['bot']['scrcpy_path']
-    # Try to connect every open port in range
-    for device in port_list:
-        os.system(f'{os.path.join(scrcpy_path,"adb")} connect 127.0.0.1:{device}')
-    # Check all connected adb devices
     devList = check_output(f'{os.path.join(scrcpy_path,"adb")} devices')
     devListArr = str(devList).split('\\n')
     # Check for online status
+    deivce = None
     for client in devListArr[1:]:
+        client_ip = client.split('\\t')[0]
         if 'device' in client:
-            # split IP from status and store device
-            deivce = client.split('\\t')[0]
+            deivce = client_ip
             print("Found ADB device! {}".format(deivce))
-            return deivce
-    return None
+        else:
+            os.system(f'{os.path.join(scrcpy_path,"adb")} disconnect {client_ip}')
+    return deivce
+
 
 def get_device():
-    # Find valid ADB device
-    port_list=scan_ports('127.0.0.1',48000,65000)
-    device = scan_ADB(port_list)
-    return device
+    # Check if adb already connected
+    device = get_adb_device()
+    if not device:
+        # Find valid ADB device by scanning ports
+        device=scan_ports('127.0.0.1',48000,65000)
+    if device:
+        return device
