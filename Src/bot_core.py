@@ -198,7 +198,21 @@ class Bot:
         time.sleep(0.2)
         print('Merged special!')
         return merge_df
-    # Find targets for special merge
+    
+    def scrapper_merge(self,df_split,merge_series):
+        merge_df = None
+        # Try to merge with scrappers
+        scrap_series=adv_filter_keys(merge_series,'scrapper.png')
+        if not scrap_series.empty:
+            scrap_rank = scrap_series.index.get_level_values('rank')
+            for rank in scrap_rank:
+                merge_series_scrap=adv_filter_keys(merge_series,rank)
+                if len(merge_series_scrap.index)>=2:
+                    merge_df = self.merge_special_unit(df_split,merge_series_scrap,special_type='scrapper.png')
+                    break
+        return merge_df
+
+    # Find targets for special merge (dryad and harlequin)
     def special_merge(self,df_split,merge_series,target='zealot.png'):
         merge_df = None
         # Try to rank up dryads
@@ -216,6 +230,23 @@ class Bot:
                     merge_df = self.merge_special_unit(df_split,merge_series_zealot,special_type='dryad.png')
                     break
         return merge_df
+    def demon_hunter_logic(self,df_split,unit_series,df_groups,group_keys,grid_df,merge_df):
+        info = 'demon_hunter_logic'
+        merge_target='demon_hunter.png'
+        # Select stuff to merge
+        merge_series = unit_series.copy()
+        # Do special merge with dryad/Harley
+        self.special_merge(df_split,merge_series,merge_target)
+        merge_demon = adv_filter_keys(unit_series,'demon_hunter.png',remove=False)
+        if not merge_demon.empty:
+            info='leveling demon hunter with scrapper'
+            max_demon = merge_demon.index.max()
+            # Remove 1 count of highest rank demon hunter
+            merge_series[merge_series.index == max_demon] = merge_series[merge_series.index == max_demon] - 1
+        merge_df = self.scrapper_merge(df_split,merge_series)
+        return grid_df,unit_series,merge_series,merge_df,info
+
+    
     # Try to find a merge target and merge it
     def try_merge(self,rank=1,prev_grid=None,merge_target='zealot.png'):
         info=''
@@ -223,6 +254,11 @@ class Bot:
         names=self.scan_grid(new=True)
         grid_df=bot_perception.grid_status(names,prev_grid=prev_grid)
         df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
+
+        if merge_target=='demon_hunter.png':
+            grid_df,unit_series,merge_series,merge_df,info = self.demon_hunter_logic(df_split,unit_series,df_groups,group_keys,grid_df,merge_df)
+            return grid_df,unit_series,merge_series,merge_df,info
+
         # Select stuff to merge
         merge_series = unit_series.copy()
         # Do special merge with dryad/Harley

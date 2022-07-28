@@ -74,6 +74,8 @@ def grid_status(names,prev_grid=None):  # Add multithreading of match unit, matc
     for filename in names:
         rank,rank_prob= match_rank(filename)
         unit_guess= match_unit(filename) if rank !=0 else ['empty.png',0]
+        # Combine guesses for unit aliases 
+        unit_guess[0] = unit_guess[0].split('.png')[0].split('-')[0] + '.png'
         grid_stats.append([*unit_guess,rank,rank_prob])
     grid_df=pd.DataFrame(grid_stats, columns=['unit','probability','rank','rank_prob'])
     # Add grid position 
