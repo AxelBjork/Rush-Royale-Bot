@@ -37,7 +37,8 @@ class Bot:
         # Turn off video stream (spammy)
         self.client.alive=False
 
-    def stop(self):
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.logger.info('Exiting bot')
         self.client.stop()
 
     # Function to send ADB shell command

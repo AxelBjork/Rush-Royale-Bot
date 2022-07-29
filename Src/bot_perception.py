@@ -68,12 +68,30 @@ def match_unit(filename,guess_unit=True):
         certainty = round(1 - (guess[1]/unit_df['feature_distance'].sum()),3)
         return [guess[0],certainty]
 
+# Check for cursed tiles
+def is_cursed(filename):
+    img_rgb = cv2.imread(filename)
+    crop_unit = img_rgb[15:15 + 90, 17:17 + 90]
+    # Create empyty numpy array for color values
+    avg_color = []
+    # Take 5x5 pixels from each corner and looks at color to determine if it is a cursed tile
+    for x,y in [(0,0),(0,85),(85,0),(85,85)]:
+        img_corner = crop_unit[y:y + 5, x:x + 5]
+        avg_color_per_row = np.average(img_corner, axis=0)
+        color = np.average(avg_color_per_row, axis=0)
+        avg_color.append(color)
+    # Check how far each corner is from reference color (cv2 BGR format)
+    delta_color = np.array(avg_color) - [153, 36, 91]
+    return np.all(delta_color < 10)
+
 # Get status of current grid
 def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
     grid_stats=[]
     for filename in names:
         rank,rank_prob= match_rank(filename)
         unit_guess= match_unit(filename) if rank !=0 else ['empty.png',0]
+        # Curse does not work well for different ranks
+        #unit_guess = unit_guess if not is_cursed(filename) else ['cursed.png',0]
         grid_stats.append([*unit_guess,rank,rank_prob])
     grid_df=pd.DataFrame(grid_stats, columns=['unit','probability','rank','rank_prob'])
     # Add grid position 
