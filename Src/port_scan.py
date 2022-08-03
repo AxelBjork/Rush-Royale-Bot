@@ -62,9 +62,7 @@ def get_adb_device(scrcpy_path):
 
 
 def get_device():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    scrcpy_path=config['bot']['scrcpy_path']
+    scrcpy_path = '.scrcpy'
     os.system(f'{os.path.join(scrcpy_path,"adb")} devices')
     # Check if adb got connected
     device = get_adb_device(scrcpy_path)

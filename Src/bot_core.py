@@ -18,13 +18,15 @@ config = configparser.ConfigParser()
 # Read the config file
 config.read('config.ini')
 # Get the values from the config file
-scrcpy_path=config['bot']['scrcpy_path']
-
+#scrcpy_path=config['bot']['scrcpy_path']
+scrcpy_path = '.scrcpy'
 SLEEP_DELAY=0.1
 
 class Bot:
     def __init__(self,device='emulator-5554'):
-        self.logger = setup_logger()
+        self.bot_stop=False
+        self.combat = self.output = self.grid_df =self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step= None
+        self.logger = logging.getLogger('__main__')
         self.device = device
         self.shell(f'{os.path.join(scrcpy_path,"adb")} connect {self.device}')
         # Try to launch application through ADB shell
@@ -34,11 +36,13 @@ class Bot:
         self.client = Client(device=self.device)
         # Start scrcpy client
         self.client.start(threaded=True)
+        self.logger.info('Connecting to Bluestacks')
         time.sleep(0.5)
         # Turn off video stream (spammy)
         self.client.alive=False
 
     def __exit__(self, exc_type, exc_value, traceback):
+        self.bot_stop=True
         self.logger.info('Exiting bot')
         self.client.stop()
 
@@ -192,14 +196,14 @@ class Bot:
         # Get special merge unit
         special_unit, normal_unit=[adv_filter_keys(merge_series,special_type,remove=remove) for remove in [False,True]] # scrapper support not tested
         # Get corresponding dataframes
-        print(special_unit, normal_unit,merge_series)
+        #print(special_unit, normal_unit,merge_series)
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
         merge_df=pd.concat([special_df, normal_df])
         # Merge 'em
         unit_chosen=merge_df['grid_pos'].tolist()
         self.swipe(*unit_chosen)
         time.sleep(0.2)
-        print('Merged special!')
+        #print('Merged special!')
         return merge_df
     # Find targets for special merge
     def special_merge(self,df_split,merge_series,target='zealot.png'):
@@ -215,7 +219,6 @@ class Bot:
                     merge_df = self.merge_special_unit(df_split,merge_series_dryad,special_type='harlequin.png')
                     break
                 if len(merge_series_zealot.index)==2:
-                    print(merge_series_zealot)
                     merge_df = self.merge_special_unit(df_split,merge_series_zealot,special_type='dryad.png')
                     break
         return merge_df
@@ -228,6 +231,8 @@ class Bot:
         df_split,unit_series, df_groups, group_keys=grid_meta_info(grid_df)
         # Select stuff to merge
         merge_series = unit_series.copy()
+        # Remove empty groups
+        merge_series = adv_filter_keys(merge_series,'empty.png',remove=True)
         # Do special merge with dryad/Harley
         self.special_merge(df_split,merge_series,merge_target)
         merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
@@ -262,7 +267,7 @@ class Bot:
         else:
             info = 'Full Grid - Merging!'
             # Remove all high level dps units
-            merge_series = adv_filter_keys(merge_series,[[3,4,5],['zealot.png','crystal.png','bruser.png',merge_target]],remove=True)
+            merge_series = adv_filter_keys(merge_series,[[3,4,5,6,7],['zealot.png','crystal.png','bruser.png',merge_target]],remove=True)
             if not merge_series.empty:
                 merge_df = self.merge_unit(df_split,merge_series)
         return grid_df,unit_series,merge_series,merge_df,info
@@ -281,7 +286,7 @@ class Bot:
 
     # Start a dungeon floor from PvE page
     def play_dungeon(self,floor=5):
-        print('Starting Dungeon floor', floor)
+        self.logger.info(f'Starting Dungeon floor {floor}')
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil(floor/3))}.png'
         expanded=0
@@ -364,7 +369,7 @@ class Bot:
             pos = self.find_store_refresh()
             if not pos is None:
                 self.click_button(pos)
-                print('refreshed!')
+                self.logger.info('refreshed!')
         elif store_state == 'new_store':    
             pos = self.find_store_refresh()
             if not pos is None:
@@ -374,7 +379,7 @@ class Bot:
                 self.click(30,150) # remove pop-up
                 self.click_button(pos+[400,-400]) # Click last item (possible legendary)
                 self.click(400,1165) # buy
-                print('Bought!')
+                self.logger.info('Bought store units!')
         return store_state
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
@@ -396,24 +401,24 @@ class Bot:
             store_state = self.refresh_shop()
             store_state = 'nothing'
             if store_state == 'nothing' or store_state == 'spin_only':
-                print('Watched all ads!')
+                self.logger.info('Watched all ads!')
                 return
         else:
-            print('Watched all ads!')
+            self.logger.info('Watched all ads!')
             return
         time.sleep(30)
         # Keep watching until back in menu
         for i in range(10):
             avail_buttons,status = self.battle_screen()
             if status =='menu' or status =='home':
-                print('FINISHED AD')
+                self.logger.info('FINISHED AD')
                 return # Exit function
             time.sleep(2)
             self.click(870,30) # skip forward/click X
             self.click(870,100) # click X playstore popup
             if i >5:
                 self.shell(f'input keyevent {const.KEYCODE_BACK}') #Force back
-            print('AD TIME',i,status)
+            self.logger.info(f'AD TIME {i} {status}')
         # Restart game if can't escape ad
         self.restart_RR()
 
@@ -516,48 +521,3 @@ def get_button_pos(df,button):
     #button=button+'.png'
     pos=df[df['icon']==button]['pos [X,Y]'].reset_index(drop=True)[0]
     return np.array(pos)
-
-
-# Move selected units from collection folder to deck folder for unit recognition options
-def select_units(units,show=False):
-    if show:
-        print(os.listdir("all_units")) 
-        print('Chosen:\n',units)
-    if os.path.isdir('units'):
-        [os.remove('units/'+unit) for unit in os.listdir("units")]
-    else: os.mkdir('units')
-    # Read and write all images
-    for new_unit in units:
-        cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))
-
-def setup_logger():
-    logging.basicConfig(filename='RR_bot.log',level=logging.INFO)
-    # Delete previous log file
-    if os.path.exists('RR_bot.log'):
-        try:
-            os.remove('RR_bot.log')
-        except PermissionError:
-            print('Log file is already open')
-            return
-    # Set log format and dateformat
-    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger(__name__+'.RR_Bot')
-    logger.info('Initializing bot')
-    return logger
-
-def start_bot_class(config):
-    scrcpy_path=config['bot']['scrcpy_path']
-    device = port_scan.get_device()
-    if device is None:
-        raise Exception("No device found!")
-    # Start Scrcpy once per restart
-    if 'started_scrcpy' not in globals():
-        global started_scrcpy
-        started_scrcpy=True
-        proc = Popen([os.path.join(scrcpy_path,'scrcpy'),'-s',device], shell=True)
-        time.sleep(1) # <-- sleep for 1 second
-        proc.terminate() # <-- terminate the process (Scrcpy window can be closed)
-    sel_units= ['chemist.png','knight_statue.png','harlequin.png','dryad.png','demon_hunter.png']
-    select_units(sel_units,show=False)
-    bot = Bot(device)
-    return bot
