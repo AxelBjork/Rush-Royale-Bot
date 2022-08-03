@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import logging
+import configparser
 from subprocess import check_output,Popen
 # Android ADB
 from scrcpy import Client, const
@@ -11,7 +12,7 @@ from scrcpy import Client, const
 import cv2
 # internal
 import bot_perception
-import configparser
+import port_scan
 
 config = configparser.ConfigParser()
 # Read the config file
@@ -79,6 +80,7 @@ class Bot:
             self.shell('monkey -p com.my.defense 1')
             time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
+    # Add screenshot demon which takes a screenshot every second-ish on separate thread
     def getScreen(self):
         p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
         p.wait()
@@ -542,3 +544,20 @@ def setup_logger():
     logger = logging.getLogger(__name__+'.RR_Bot')
     logger.info('Initializing bot')
     return logger
+
+def start_bot_class(config):
+    scrcpy_path=config['bot']['scrcpy_path']
+    device = port_scan.get_device()
+    if device is None:
+        raise Exception("No device found!")
+    # Start Scrcpy once per restart
+    if 'started_scrcpy' not in globals():
+        global started_scrcpy
+        started_scrcpy=True
+        proc = Popen([os.path.join(scrcpy_path,'scrcpy'),'-s',device], shell=True)
+        time.sleep(1) # <-- sleep for 1 second
+        proc.terminate() # <-- terminate the process (Scrcpy window can be closed)
+    sel_units= ['chemist.png','knight_statue.png','harlequin.png','dryad.png','demon_hunter.png']
+    select_units(sel_units,show=False)
+    bot = Bot(device)
+    return bot
