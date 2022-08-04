@@ -20,8 +20,8 @@ class RR_bot:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
         # Setup logger
+        logging.basicConfig(filename='RR_bot.log',level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
         self.logger.handlers.clear()
         # Create tkinter window base
         self.root = create_base()
