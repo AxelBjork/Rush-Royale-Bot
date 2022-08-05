@@ -188,14 +188,12 @@ class Bot:
         # Get special merge unit
         special_unit, normal_unit=[adv_filter_keys(merge_series,special_type,remove=remove) for remove in [False,True]] # scrapper support not tested
         # Get corresponding dataframes
-        #print(special_unit, normal_unit,merge_series)
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
         merge_df=pd.concat([special_df, normal_df])
         # Merge 'em
         unit_chosen=merge_df['grid_pos'].tolist()
         self.swipe(*unit_chosen)
         time.sleep(0.2)
-        #print('Merged special!')
         return merge_df
     # Find targets for special merge
     def special_merge(self,df_split,merge_series,target='zealot.png'):

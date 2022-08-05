@@ -148,8 +148,8 @@ def create_options(frame1,config):
     label= Label(frame1,text="Options",justify=LEFT).grid(row=0, column=0, sticky=W)
     ads_var = IntVar() 
     pve_var = IntVar() 
-    ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=1, column=0, sticky=W)
-    pve_check = Checkbutton(frame1, text='PvE', variable=pve_var,justify=LEFT).grid(row=1, column=1, sticky=W)
+    #ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=1, column=0, sticky=W)
+    #pve_check = Checkbutton(frame1, text='PvE', variable=pve_var,justify=LEFT).grid(row=1, column=1, sticky=W)
     # Mana level targets
     mana_label= Label(frame1,text="Mana Level Targets",justify=LEFT).grid(row = 2, column = 0, sticky=W)
     stored_values=np.fromstring(config['bot']['mana_level'], dtype=int, sep=',') 
