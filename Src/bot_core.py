@@ -78,10 +78,10 @@ class Bot:
     # Take screenshot of device screen and load pixel values 
     # Add screenshot demon which takes a screenshot every second-ish on separate thread
     def getScreen(self):
-        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
+        p=Popen([".scrcpy/adb",'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
         p.wait()
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p=Popen([os.path.join(scrcpy_path,"adb"),'-s',self.device, 'pull', '/sdcard/bot_feed.png'])
+        p=Popen([".scrcpy/adb",'-s',self.device, 'pull', '/sdcard/bot_feed.png'])
         p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread(self.screenshotName)
