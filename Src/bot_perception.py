@@ -93,7 +93,7 @@ def grid_status(names,prev_grid=None):  # Add multithreading of match unit, matc
         # Curse does not work well for different ranks
         #unit_guess = unit_guess if not is_cursed(filename) else ['cursed.png',0]
         grid_stats.append([*unit_guess,rank,rank_prob])
-    grid_df=pd.DataFrame(grid_stats, columns=['unit','probability','rank','rank_prob'])
+    grid_df=pd.DataFrame(grid_stats, columns=['unit','u_prob','rank','r_prob'])
     # Add grid position 
     box_id=[[(i//5)%5,i%5] for i in range(15)]
     grid_df.insert(0,'grid_pos',box_id)
@@ -115,7 +115,7 @@ def match_rank(filename):
         logreg = pickle.load(f)
         classes = logreg.classes_
     prob = logreg.predict_proba(edges.reshape(1,-1))
-    return prob.argmax(),prob.max()
+    return prob.argmax(),round(prob.max(),3)
 
 ## Add to dataset
 def add_grid_to_dataset():

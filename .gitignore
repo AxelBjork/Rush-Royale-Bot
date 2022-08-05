@@ -1,9 +1,14 @@
 __pycache__/
 OCR_inputs/
 units/
+.bot_env
+.vscode
+.scrcpy
 machine_learning
 screens
 emulator-5554-screenshot.png
 Src/old_functions.py
 bot_feed.png
 RR_bot.log
+build
+dist
