@@ -7,8 +7,7 @@ import configparser
 
 # internal
 import bot_handler
-
-
+import bot_logger
 
 # GUI Class
 class RR_bot:
@@ -21,10 +20,6 @@ class RR_bot:
         # Read config file
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
-        # Setup logger
-        logging.basicConfig(filename='RR_bot.log',level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
-        self.logger.handlers.clear()
         # Create tkinter window base
         self.root = create_base()
         self.frames = self.root.winfo_children()
@@ -36,11 +31,8 @@ class RR_bot:
         # Log frame
         logger_feed = Text(self.frames[3], height = 30, width = 38,bg='#575559',fg='#ffffff',wrap=WORD, font=('Consolas',9))
         logger_feed.grid(row=0, sticky=S)
-        # Connect logger to text widget
-        guiHandler = TextHandler(logger_feed)
-        self.formatter = logging.Formatter('[%(asctime)s] %(message)s',"%H:%M")
-        guiHandler.setFormatter(self.formatter)
-        self.logger.addHandler(guiHandler)
+        # Setup & Connect logger to text widget
+        self.logger = bot_logger.create_log_feed(logger_feed)
         start_button = Button(self.frames[2],text="Start Bot",command=self.start_command)
         stop_button = Button(self.frames[2], text='Stop Bot', command=self.stop_bot,padx=20)
         start_button.grid(row=0, column=1, padx= 10)
@@ -50,6 +42,7 @@ class RR_bot:
         self.frames[1].pack(padx=10,pady=10,side=RIGHT, anchor=SE)
         self.frames[2].pack(padx=10,pady=10,side=BOTTOM, anchor=SW)
         self.frames[3].pack(padx=10,pady=10,side=LEFT, anchor=SW)
+        self.logger.debug('GUI started!')
         self.root.mainloop()
     
     # Clear loggers, collect threads, and close window
@@ -75,7 +68,7 @@ class RR_bot:
         self.thread_run.start()
     # Initialize the bot
     def init_bot(self):
-        self.logger.info('Starting bot...')
+        self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
         self.bot_initalized.set()
     
@@ -123,10 +116,10 @@ class RR_bot:
             infos_ready.clear()
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
-                self.logger.info('Exiting main loop...')
+                self.logger.warning('Exiting main loop...')
                 thread_bot.join()
                 self.logger.info('Bot stopped!')
-                self.logger.info('Safe to close gui')
+                self.logger.critical('Safe to close gui')
                 return
     # Raise stop flag to threads
     def stop_bot(self):
@@ -165,8 +158,6 @@ def create_options(frame1,config):
     label= Label(frame1,text="Options",justify=LEFT).grid(row=0, column=0, sticky=W)
     ads_var = IntVar() 
     pve_var = IntVar() 
-    #ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=1, column=0, sticky=W)
-    #pve_check = Checkbutton(frame1, text='PvE', variable=pve_var,justify=LEFT).grid(row=1, column=1, sticky=W)
     # Mana level targets
     mana_label= Label(frame1,text="Mana Level Targets",justify=LEFT).grid(row = 2, column = 0, sticky=W)
     stored_values=np.fromstring(config['bot']['mana_level'], dtype=int, sep=',') 
@@ -218,21 +209,6 @@ def write_to_widget(root, tbox, text):
     tbox.config(state=DISABLED)
     root.update_idletasks()
 
-
-
-class TextHandler(logging.StreamHandler):
-    def __init__(self, textctrl):
-        logging.StreamHandler.__init__(self) # initialize parent
-        self.textctrl = textctrl
-
-    def emit(self, record):
-        msg = self.format(record)
-        self.textctrl.config(state="normal")
-        self.textctrl.insert("end", msg + "\n")
-        self.flush()
-        # scroll to the bottom
-        self.textctrl.see("end")
-        self.textctrl.config(state="disabled")
 
 # Start the actual bot
 bot_gui = RR_bot()

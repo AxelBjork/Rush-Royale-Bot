@@ -67,6 +67,7 @@ def start_bot_class(logger):
         proc = Popen(['.scrcpy/scrcpy','-s',device],stdout=DEVNULL)
         time.sleep(1) # <-- sleep for 1 second
         proc.terminate() # <-- terminate the process (Scrcpy window i2s not needed)
+    logger.debug(f'Minimizing Scrcpy window')
     bot = bot_core.Bot(device)
     return bot
 
@@ -86,9 +87,12 @@ def combat_loop(bot,grid_df,mana_targets,user_target='demon_hunter.png'):
 def bot_loop(bot,info_event):
     # Load user config
     config = bot.config['bot']
-    user_floor = int(config['bot']['floor'])
+    user_floor = int(config['floor'])
+    if user_floor not in [1,2,4,5,7,8,10]:
+        bot.bot_stop
+        bot.logger.error(f'Invalid floor {user_floor} floor 3, 6, 9 are not supported')
     user_level = np.fromstring(config['mana_level'], dtype=int, sep=',') 
-    user_target = config['merge_target'].split('.')[0]+'.png'
+    user_target = config['dps_unit'].split('.')[0]+'.png'
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
     # State variables
@@ -97,7 +101,7 @@ def bot_loop(bot,info_event):
     watch_ad = False
     grid_df =None
     # Main loop
-    bot.logger.info(f'Bot mainloop started')
+    bot.logger.debug(f'Bot mainloop started')
     while(not bot.bot_stop):
         output = bot.battle_screen(start=False)
         if output[1]=='fighting':
