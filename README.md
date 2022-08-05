@@ -32,10 +32,6 @@ Select add Python to path, check `python --version`  works and gives Python 3.9.
 
 Download and extract this repo
 
-Install requirements 
-
-`pip install -r requirements.txt`
-
 **Bluestacks**
 
 Install Latest Bluestacks 5
@@ -52,38 +48,10 @@ Settings:
 
 Setup google account, download rush royale, ect.
 
-**Scrcpy**
+**Bot**
 
-Download Scrcpy from https://github.com/Genymobile/scrcpy
+run install.bat to create repo and install dependencies
 
-Extract to suitable directory
+run lanch_gui.bat
 
-Open command prompt and verify scrcpy + Bluestacks works
-
-`directory\scrcpy -s 127.0.0.1:xxxxx`
-
-`directory\scrcpy -s emulator-5554` (if the port was 5555)
-
-Add the directory to bot config.ini
-
-**Launch Bot**
-
-Open terminal and navigate to bot directory and launch notebook
-
-`cd C:\Code\Rush-Royale-Bot`
-
-`Jupyter notebook`
-
-In the new browser open RR_bot.ipynb
-
-Change `sel_units` to your units
-
-Run first cell (SETUP). Scrcpy can be closed once opened
-
-Change list in `bot.mana_level([2,3,5],hero_power=True)` to the card slots you want the bot to mana level
-
-Change `merge_target` to main dps unit which the bot will try to perserve and rank up with dryad.
-
-Change floor in `bot.battle_screen(start=True,pve=True,floor=7) #(only 1,2,4,5,7,8,10 possible)` to floor bot should farm.
-
-Run second cell (RUN BOT)
+(temp) units and other settings have to be configured in bot_handler.py, this will be moved to the config.ini file.
