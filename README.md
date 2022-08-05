@@ -38,11 +38,7 @@ Install Latest Bluestacks 5
 
 Settings:
 
-(Graphics) Graphics engine mode: Compatibility
-
-(Graphics) Graphics renderer: OpenGL
-
-(Graphics) Interface renderer: Auto
+(Graphics) Graphics engine mode: Compatibility (this can help if you have issues with scrcpy)
 
 (Advanced) Android Debug Bridge: Enabled - Note the port number here
 
