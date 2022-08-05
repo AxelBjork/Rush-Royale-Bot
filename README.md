@@ -16,8 +16,8 @@ Use with Bluestacks on PC
 
 ![output](https://user-images.githubusercontent.com/71280183/171181226-d680e7ca-729f-4c3d-8fc6-573736371dfb.png)
 
+![new_gui](https://user-images.githubusercontent.com/71280183/183141310-841b100a-2ddb-4f59-a6d9-4c7789ba72db.png)
 
-![high_board](https://user-images.githubusercontent.com/71280183/178340847-3c03ccb3-840c-4a4d-ba89-e2ac3d5883b7.png)
 
 
 ## Setup Guide
@@ -32,58 +32,22 @@ Select add Python to path, check `python --version`  works and gives Python 3.9.
 
 Download and extract this repo
 
-Install requirements 
-
-`pip install -r requirements.txt`
-
 **Bluestacks**
 
 Install Latest Bluestacks 5
 
 Settings:
 
-(Graphics) Graphics engine mode: Compatibility
-
-(Graphics) Graphics renderer: OpenGL
-
-(Graphics) Interface renderer: Auto
+(Graphics) Graphics engine mode: Compatibility (this can help if you have issues with scrcpy)
 
 (Advanced) Android Debug Bridge: Enabled - Note the port number here
 
 Setup google account, download rush royale, ect.
 
-**Scrcpy**
+**Bot**
 
-Download Scrcpy from https://github.com/Genymobile/scrcpy
+run install.bat to create repo and install dependencies
 
-Extract to suitable directory
+run lanch_gui.bat
 
-Open command prompt and verify scrcpy + Bluestacks works
-
-`directory\scrcpy -s 127.0.0.1:xxxxx`
-
-`directory\scrcpy -s emulator-5554` (if the port was 5555)
-
-Add the directory to bot config.ini
-
-**Launch Bot**
-
-Open terminal and navigate to bot directory and launch notebook
-
-`cd C:\Code\Rush-Royale-Bot`
-
-`Jupyter notebook`
-
-In the new browser open RR_bot.ipynb
-
-Change `sel_units` to your units
-
-Run first cell (SETUP). Scrcpy can be closed once opened
-
-Change list in `bot.mana_level([2,3,5],hero_power=True)` to the card slots you want the bot to mana level
-
-Change `merge_target` to main dps unit which the bot will try to perserve and rank up with dryad.
-
-Change floor in `bot.battle_screen(start=True,pve=True,floor=7) #(only 1,2,4,5,7,8,10 possible)` to floor bot should farm.
-
-Run second cell (RUN BOT)
+(temp) units and other settings have to be configured in bot_handler.py, this will be moved to the config.ini file.
