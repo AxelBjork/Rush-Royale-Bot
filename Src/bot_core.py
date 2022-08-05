@@ -1,10 +1,8 @@
 import os
 import time
-from datetime import datetime
 import numpy as np
 import pandas as pd
 import logging
-import configparser
 from subprocess import check_output,Popen
 # Android ADB
 from scrcpy import Client, const
@@ -12,14 +10,8 @@ from scrcpy import Client, const
 import cv2
 # internal
 import bot_perception
-import port_scan
 
-config = configparser.ConfigParser()
-# Read the config file
-config.read('config.ini')
-# Get the values from the config file
-#scrcpy_path=config['bot']['scrcpy_path']
-scrcpy_path = '.scrcpy'
+
 SLEEP_DELAY=0.1
 
 class Bot:
@@ -28,7 +20,7 @@ class Bot:
         self.combat = self.output = self.grid_df =self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step= None
         self.logger = logging.getLogger('__main__')
         self.device = device
-        self.shell(f'{os.path.join(scrcpy_path,"adb")} connect {self.device}')
+        self.shell(f'.scrcpy/adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         self.screenshotName = 'bot_feed.png'
@@ -48,7 +40,7 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'{os.path.join(scrcpy_path,"adb")} -s {self.device} shell {cmd}')
+        os.system(f'.scrcpy/adb -s {self.device} shell {cmd}')
     # Send ADB to click screen
     def click(self, x, y,delay_mult=1):
         self.client.control.touch(x, y, const.ACTION_DOWN)
