@@ -8,6 +8,8 @@ import configparser
 # internal
 import bot_handler
 
+
+
 # GUI Class
 class RR_bot:
     def __init__(self):
@@ -91,7 +93,8 @@ class RR_bot:
         self.bot_initalized.wait(timeout=20)
         self.thread_init.join() # Eat finished thread
         self.logger.info('Started bot!')
-        self.logger.info('Scrcpy window can be closed')
+        os.system('cls')
+        os.system("type src\startup_message.txt")
         infos_ready = threading.Event()
         self.bot_instance.bot_stop = False
         self.bot_instance.logger = self.logger

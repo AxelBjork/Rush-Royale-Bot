@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-from subprocess import Popen
+from subprocess import Popen,DEVNULL
 # Image processing
 import cv2
 # internal
@@ -58,9 +58,10 @@ def start_bot_class(logger):
     if 'started_scrcpy' not in globals():
         global started_scrcpy
         started_scrcpy=True
-        proc = Popen([os.path.join('.scrcpy','scrcpy'),'-s',device], shell=True)
+        logger.info(f'Connecting Scrcpy to {device}')
+        proc = Popen(['.scrcpy/scrcpy','-s',device],stdout=DEVNULL)
         time.sleep(1) # <-- sleep for 1 second
-        proc.terminate() # <-- terminate the process (Scrcpy window can be closed)
+        proc.terminate() # <-- terminate the process (Scrcpy window i2s not needed)
     sel_units= ['chemist.png','knight_statue.png','harlequin.png','dryad.png','demon_hunter.png']
     select_units(sel_units,show=False)
     bot = bot_core.Bot(device)

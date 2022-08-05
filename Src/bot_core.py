@@ -1,9 +1,10 @@
+from asyncio import subprocess
 import os
 import time
 import numpy as np
 import pandas as pd
 import logging
-from subprocess import check_output,Popen
+from subprocess import Popen, DEVNULL
 # Android ADB
 from scrcpy import Client, const
 # Image processing
@@ -20,7 +21,7 @@ class Bot:
         self.combat = self.output = self.grid_df =self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step= None
         self.logger = logging.getLogger('__main__')
         self.device = device
-        self.shell(f'.scrcpy/adb connect {self.device}')
+        self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         self.screenshotName = 'bot_feed.png'
@@ -40,7 +41,7 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'.scrcpy/adb -s {self.device} shell {cmd}')
+        os.system(f'.scrcpy\\adb -s {self.device} shell {cmd}')
     # Send ADB to click screen
     def click(self, x, y,delay_mult=1):
         self.client.control.touch(x, y, const.ACTION_DOWN)
@@ -78,10 +79,10 @@ class Bot:
     # Take screenshot of device screen and load pixel values 
     # Add screenshot demon which takes a screenshot every second-ish on separate thread
     def getScreen(self):
-        p=Popen([".scrcpy/adb",'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'])
+        p=Popen([".scrcpy\\adb",'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],shell=True)
         p.wait()
         # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p=Popen([".scrcpy/adb",'-s',self.device, 'pull', '/sdcard/bot_feed.png'])
+        p=Popen([".scrcpy\\adb",'-s',self.device, 'pull', '/sdcard/bot_feed.png'],stdout=DEVNULL)
         p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread(self.screenshotName)
