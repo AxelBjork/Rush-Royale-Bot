@@ -61,17 +61,8 @@ class RR_bot:
         self.root.destroy()
     # Initilzie the thread for main bot
     def start_command(self):
-        self.logger.info(f"Logging with logger: {self.logger.name}")
         self.stop_flag = False
-        floor_var=int(self.floor.get())
-        card_level = [var.get() for var in self.mana_vars]*np.arange(1,6)
-        card_level = card_level[card_level != 0]
-        self.config['bot']['floor'] = str(floor_var)
-        self.config['bot']['mana_level'] = np.array2string(card_level,separator=',')[1:-1]
-        with open('config.ini', 'w') as configfile:
-            self.config.write(configfile)
-        # Dump config
-        self.logger.info("Stored settings to config!")
+        self.update_config()
         if self.running:
             return
         self.running = True
@@ -87,6 +78,26 @@ class RR_bot:
         self.logger.info('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
         self.bot_initalized.set()
+    
+    # Update config file
+    def update_config(self):
+        # Update config file
+        floor_var=int(self.floor.get())
+        card_level = [var.get() for var in self.mana_vars]*np.arange(1,6)
+        card_level = card_level[card_level != 0]
+        self.config.read('config.ini')
+        self.config['bot']['floor'] = str(floor_var)
+        self.config['bot']['mana_level'] = np.array2string(card_level,separator=',')[1:-1]
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
+        self.logger.info("Stored settings to config!")
+    # Update unit selection
+    def update_units(self):
+        self.selected_units=self.config['bot']['units'].replace(' ','').split(',')
+        self.logger.info(f'Selected units: {", ".join(self.selected_units)}')
+        if not bot_handler.select_units([unit + '.png' for unit in self.selected_units]):
+            valid_units = ' '.join(os.listdir("all_units")).replace('.png','').split(' ')
+            self.logger.info(f'Invalid units in config file! Valid units: {valid_units}')
     # Run the bot
     def start_bot(self):
         # Wait for started thread to be done
@@ -95,9 +106,12 @@ class RR_bot:
         self.logger.info('Started bot!')
         os.system('cls')
         os.system("type src\startup_message.txt")
+        self.update_units()
         infos_ready = threading.Event()
+        # Pass gui info to bot
         self.bot_instance.bot_stop = False
         self.bot_instance.logger = self.logger
+        self.bot_instance.config = self.config
         bot = self.bot_instance
         # Start bot thread
         thread_bot = threading.Thread(target=bot_handler.bot_loop, args=([bot,infos_ready]))

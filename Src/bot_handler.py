@@ -1,5 +1,6 @@
 import os
 import time
+import numpy as np
 import logging
 from subprocess import Popen,DEVNULL
 # Image processing
@@ -35,16 +36,20 @@ def download(url, filename):
     return path
 
 # Moves selected units from collection folder to deck folder for unit recognition options
-def select_units(units,show=False):
-    if show:
-        print(os.listdir("all_units")) 
-        print('Chosen:\n',units)
+def select_units(units):
     if os.path.isdir('units'):
         [os.remove('units/'+unit) for unit in os.listdir("units")]
     else: os.mkdir('units')
     # Read and write all images
     for new_unit in units:
-        cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))
+        try:
+            cv2.imwrite('units/'+new_unit,cv2.imread('all_units/'+new_unit))
+        except Exception as e:
+            print(e)
+            print(f'{new_unit} not found')
+            continue
+    # Verify enough units were selected
+    return len(os.listdir("units")) > 4
 
 
 def start_bot_class(logger):
@@ -62,29 +67,35 @@ def start_bot_class(logger):
         proc = Popen(['.scrcpy/scrcpy','-s',device],stdout=DEVNULL)
         time.sleep(1) # <-- sleep for 1 second
         proc.terminate() # <-- terminate the process (Scrcpy window i2s not needed)
-    sel_units= ['chemist.png','knight_statue.png','harlequin.png','dryad.png','demon_hunter.png']
-    select_units(sel_units,show=False)
     bot = bot_core.Bot(device)
     return bot
 
 # Loop for combat actions
-def combat_loop(bot,grid_df,mana_targets,merge_target='demon_hunter.png'):
+def combat_loop(bot,grid_df,mana_targets,user_target='demon_hunter.png'):
     time.sleep(0.2)
     # Upgrade units
+    mana_targets = np.fromstring(bot.config['bot']['mana_level'], dtype=int, sep=',') 
     bot.mana_level([2,3,5],hero_power=True)
     # Spawn units
     bot.click(450,1360)
     # Try to merge units
-    grid_df,unit_series,merge_series,df_groups,info = bot.try_merge(prev_grid=grid_df,merge_target='demon_hunter.png')
+    grid_df,unit_series,merge_series,df_groups,info = bot.try_merge(prev_grid=grid_df,merge_target=user_target)
     return grid_df,unit_series,merge_series,df_groups,info
 
 # Run the bot
 def bot_loop(bot,info_event):
+    # Load user config
+    config = bot.config['bot']
+    user_floor = int(config['bot']['floor'])
+    user_level = np.fromstring(config['mana_level'], dtype=int, sep=',') 
+    user_target = config['merge_target'].split('.')[0]+'.png'
+    # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
+    train_ai = False
+    # State variables
     wait=0
     combat = 0
-    grid_df =None
     watch_ad = False
-    train_ai = False
+    grid_df =None
     # Main loop
     bot.logger.info(f'Bot mainloop started')
     while(not bot.bot_stop):
@@ -98,7 +109,7 @@ def bot_loop(bot,info_event):
                 combat = 0
                 continue
             for i in range(8):
-                grid_df,bot.unit_series,bot.merge_series,bot.df_groups,bot.info = combat_loop(bot,grid_df,mana_targets = [2,3,5],merge_target='demon_hunter.png')
+                grid_df,bot.unit_series,bot.merge_series,bot.df_groups,bot.info = combat_loop(bot,grid_df, user_level, user_target)
                 bot.grid_df = grid_df.copy()
                 bot.combat = combat
                 bot.output = output[1]
@@ -115,7 +126,7 @@ def bot_loop(bot,info_event):
             watch_ad = False
         else:
             combat=0
-            output = bot.battle_screen(start=True,pve=True,floor=7) #(only 1,2,4,5,7,8,10 possible)
+            output = bot.battle_screen(start=True,pve=True,floor=user_floor) #(only 1,2,4,5,7,8,10 possible)
             wait+=1
             if wait>40:
                 bot.logger.info('RESTARTING')
