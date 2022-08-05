@@ -16,8 +16,7 @@ Use with Bluestacks on PC
 
 ![output](https://user-images.githubusercontent.com/71280183/171181226-d680e7ca-729f-4c3d-8fc6-573736371dfb.png)
 
-
-![high_board](https://user-images.githubusercontent.com/71280183/178340847-3c03ccb3-840c-4a4d-ba89-e2ac3d5883b7.png)
+![new_gui](https://user-images.githubusercontent.com/71280183/183140994-a5fabf1e-a279-469e-a682-a71acf6c594f.png)
 
 
 ## Setup Guide
