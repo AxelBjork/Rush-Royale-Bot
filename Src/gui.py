@@ -140,11 +140,11 @@ class RR_bot:
         if merge_series is not None:
             #merge_series['unit'] = merge_series['unit'].apply(lambda x: x.replace('.png',''))
             write_to_widget(self.root,self.merge_dump, merge_series.to_string())
-        if df_groups is not None:
-            df_groups['unit'] = df_groups['unit'].apply(lambda x: x.replace('.png',''))
-            unit1, unit2 = df_groups.iloc[0:2]['unit']
-            rank  = df_groups.iloc[0]['rank']
-            self.logger.info(f"Rank {rank} {unit1}-> {unit2}")
+        #if df_groups is not None:
+        #    df_groups['unit'] = df_groups['unit'].apply(lambda x: x.replace('.png',''))
+        #    unit1, unit2 = df_groups.iloc[0:2]['unit']
+        #    rank  = df_groups.iloc[0]['rank']
+        #    self.logger.info(f"Rank {rank} {unit1}-> {unit2}")
 
 ###
 ### END OF GUI CLASS

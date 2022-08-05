@@ -178,6 +178,7 @@ class Bot:
             merge_df=merge_df.sample(n=2)
         else: 
             return merge_df
+        self.log_merge(merge_df)
         # Extract unit position from dataframe
         unit_chosen=merge_df['grid_pos'].tolist()
         # Send Merge 
@@ -185,17 +186,26 @@ class Bot:
         time.sleep(0.2)
         return merge_df
     # Merge special units ['harlequin.png','dryad.png','mime.png','scrapper.png']
+    # Add logging event
     def merge_special_unit(self,df_split,merge_series,special_type):
         # Get special merge unit
         special_unit, normal_unit=[adv_filter_keys(merge_series,special_type,remove=remove) for remove in [False,True]] # scrapper support not tested
         # Get corresponding dataframes
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
         merge_df=pd.concat([special_df, normal_df])
+        self.log_merge(merge_df)
         # Merge 'em
         unit_chosen=merge_df['grid_pos'].tolist()
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
+        
+    def log_merge(self,merge_df):
+        merge_df['unit'] = merge_df['unit'].apply(lambda x: x.replace('.png',''))
+        unit1, unit2 = merge_df.iloc[0:2]['unit']
+        rank  = merge_df.iloc[0]['rank']
+        self.logger.info(f"Rank {rank} {unit1}-> {unit2}")
+
     # Find targets for special merge
     def special_merge(self,df_split,merge_series,target='zealot.png'):
         merge_df = None
@@ -277,7 +287,7 @@ class Bot:
 
     # Start a dungeon floor from PvE page
     def play_dungeon(self,floor=5):
-        self.logger.info(f'Starting Dungeon floor {floor}')
+        self.logger.debug(f'Starting Dungeon floor {floor}')
         # Divide by 3 and take ceiling of floor as int
         target_chapter = f'chapter_{int(np.ceil(floor/3))}.png'
         expanded=0
@@ -370,7 +380,7 @@ class Bot:
                 self.click(30,150) # remove pop-up
                 self.click_button(pos+[400,-400]) # Click last item (possible legendary)
                 self.click(400,1165) # buy
-                self.logger.info('Bought store units!')
+                self.logger.critical('Bought store units!')
         return store_state
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
