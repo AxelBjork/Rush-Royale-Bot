@@ -94,7 +94,7 @@ class RR_bot:
     # Run the bot
     def start_bot(self):
         # Wait for started thread to be done
-        self.bot_initalized.wait(timeout=20)
+        self.bot_initalized.wait(timeout=30)
         self.thread_init.join() # Eat finished thread
         self.logger.info('Started bot!')
         os.system('cls')
