@@ -26,7 +26,7 @@ Use with Bluestacks on PC
 
 Install Latest Python 3.9 (Windows installer 64-bit)
 
-https://www.python.org/downloads/
+https://www.python.org/downloads/ (windows 64-bit installer)[https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe]
 
 Select add Python to path, check `python --version`  works and gives Python 3.9.13
 
