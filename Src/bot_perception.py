@@ -16,7 +16,34 @@ import bot_core
 
 ####
 #### Unit type recognition
-####
+###
+
+# Get most common pixel RGB value in image
+def get_color(filename,crop=False):
+    unit_img = cv2.imread(filename)
+    if crop:
+        unit_img = unit_img[15:15 + 90, 17:17 + 90] 
+    unit_img = cv2.cvtColor(unit_img, cv2.COLOR_BGR2RGB)
+    # Flatten to pixel values
+    flat_img = unit_img.reshape(-1, unit_img.shape[2])
+    flat_img_round = flat_img//20 * 20
+    unique, counts = np.unique(flat_img_round, axis=0, return_counts=True)
+    # Sort list
+    sorted_count = np.sort(counts)[::-1]
+    ## Get index of second most common color
+    index = np.where(counts == sorted_count[0])[0][0]
+    rgb_color = unique[index]
+    return rgb_color.astype(int)
+
+
+# Match unit based on color
+def match_unit2(filename,ref_colors,ref_units):
+    # Create reference
+    unit_color = get_color(filename,crop=True)
+    # Find closest match (mean squared error)
+    diff = np.sum((ref_colors - unit_color) ** 2, axis=1)
+    min_index = np.argmin(diff)
+    return ref_units[min_index], round(diff[min_index])
 
 #Feature detection in query image with ORB detector
 def feature_match(img_query,img_train):
@@ -86,10 +113,12 @@ def is_cursed(filename):
 
 # Get status of current grid
 def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
+    ref_units = os.listdir("units")
+    ref_colors = [get_color('units/'+unit) for unit in ref_units]
     grid_stats=[]
     for filename in names:
         rank,rank_prob= match_rank(filename)
-        unit_guess= match_unit(filename) if rank !=0 else ['empty.png',0]
+        unit_guess= match_unit2(filename,ref_colors,ref_units) if rank !=0 else ['empty.png',0]
         # Curse does not work well for different ranks
         #unit_guess = unit_guess if not is_cursed(filename) else ['cursed.png',0]
         grid_stats.append([*unit_guess,rank,rank_prob])
