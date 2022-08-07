@@ -35,8 +35,10 @@ class RR_bot:
         self.logger = bot_logger.create_log_feed(logger_feed)
         start_button = Button(self.frames[2],text="Start Bot",command=self.start_command)
         stop_button = Button(self.frames[2], text='Stop Bot', command=self.stop_bot,padx=20)
+        leave_dungeon = Button(self.frames[2], text='Quit Floor', command=self.leave_game,bg='#ff0000',fg='#000000')
         start_button.grid(row=0, column=1, padx= 10)
         stop_button.grid(row=0, column=2, padx= 5)
+        leave_dungeon.grid(row=0, column=3, padx= 5)
 
         self.frames[0].pack(padx=0,pady=0,side=TOP, anchor=NW)
         self.frames[1].pack(padx=10,pady=10,side=RIGHT, anchor=SE)
@@ -81,6 +83,7 @@ class RR_bot:
         self.config.read('config.ini')
         self.config['bot']['floor'] = str(floor_var)
         self.config['bot']['mana_level'] = np.array2string(card_level,separator=',')[1:-1]
+        self.config['bot']['pve'] = str(bool(self.pve_var.get()))
         with open('config.ini', 'w') as configfile:
             self.config.write(configfile)
         self.logger.info("Stored settings to config!")
@@ -126,6 +129,14 @@ class RR_bot:
         self.running = False
         self.stop_flag = True
         self.logger.info('Stopping bot!')
+    # Leave current co-up game
+    def leave_game(self):
+        # check if bot_instance exists
+        if hasattr(self,'bot_instance'):
+            thread_bot = threading.Thread(target=self.bot_instance.restart_RR, args=([True]))
+            thread_bot.start()
+        else:
+            self.logger.warning('Bot has not been started yet!')
         
     # Update text widgets with latest info
     def update_text(self, i,combat,output,grid_df,unit_series,merge_series,info):
@@ -151,8 +162,12 @@ def create_options(frame1,config):
 
     # General options
     label= Label(frame1,text="Options",justify=LEFT).grid(row=0, column=0, sticky=W)
+    if config.has_option('bot','pve'):
+         user_pvp = int(config.getboolean('bot','pve'))
+    pve_var = IntVar(value = user_pvp) 
     ads_var = IntVar() 
-    pve_var = IntVar() 
+    pve_check = Checkbutton(frame1, text='PvE', variable=pve_var,justify=LEFT).grid(row=0, column=1, sticky=W)
+    #ad_check = Checkbutton(frame1, text='Watch ads', variable=ads_var,justify=LEFT).grid(row=0, column=2, sticky=W)
     # Mana level targets
     mana_label= Label(frame1,text="Mana Level Targets",justify=LEFT).grid(row = 2, column = 0, sticky=W)
     stored_values=np.fromstring(config['bot']['mana_level'], dtype=int, sep=',') 
@@ -206,4 +221,5 @@ def write_to_widget(root, tbox, text):
 
 
 # Start the actual bot
-bot_gui = RR_bot()
+if __name__ == "__main__":
+    bot_gui = RR_bot()

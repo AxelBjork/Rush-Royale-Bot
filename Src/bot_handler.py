@@ -86,6 +86,9 @@ def combat_loop(bot,grid_df,mana_targets,user_target='demon_hunter.png'):
 def bot_loop(bot,info_event):
     # Load user config
     config = bot.config['bot']
+    user_pve = config.getboolean('pve')
+    print(user_pve)
+    bot.logger.warning(f'PVE is set to {user_pve}')
     user_floor = int(config['floor'])
     if user_floor not in [1,2,4,5,7,8,10]:
         bot.bot_stop
@@ -129,7 +132,7 @@ def bot_loop(bot,info_event):
             watch_ad = False
         else:
             combat=0
-            output = bot.battle_screen(start=True,pve=True,floor=user_floor) #(only 1,2,4,5,7,8,10 possible)
+            output = bot.battle_screen(start=True,pve=user_pve,floor=user_floor) #(only 1,2,4,5,7,8,10 possible)
             wait+=1
             if wait>40:
                 bot.logger.info('RESTARTING')
