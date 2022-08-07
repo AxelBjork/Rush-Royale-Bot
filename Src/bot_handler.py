@@ -87,7 +87,6 @@ def bot_loop(bot,info_event):
     # Load user config
     config = bot.config['bot']
     user_pve = config.getboolean('pve')
-    print(user_pve)
     bot.logger.warning(f'PVE is set to {user_pve}')
     user_floor = int(config['floor'])
     if user_floor not in [1,2,4,5,7,8,10]:
