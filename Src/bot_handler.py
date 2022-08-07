@@ -75,8 +75,7 @@ def start_bot_class(logger):
 def combat_loop(bot,grid_df,mana_targets,user_target='demon_hunter.png'):
     time.sleep(0.2)
     # Upgrade units
-    mana_targets = np.fromstring(bot.config['bot']['mana_level'], dtype=int, sep=',') 
-    bot.mana_level([2,3,5],hero_power=True)
+    bot.mana_level(mana_targets,hero_power=True)
     # Spawn units
     bot.click(450,1360)
     # Try to merge units

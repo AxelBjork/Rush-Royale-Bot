@@ -112,7 +112,7 @@ class RR_bot:
         # Dump infos to gui whenever ready
         while(1):
             infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step,bot.combat,bot.output,bot.grid_df,bot.unit_series,bot.merge_series,bot.df_groups,bot.info)
+            self.update_text(bot.combat_step,bot.combat,bot.output,bot.grid_df,bot.unit_series,bot.merge_series,bot.info)
             infos_ready.clear()
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
@@ -128,7 +128,7 @@ class RR_bot:
         self.logger.info('Stopping bot!')
         
     # Update text widgets with latest info
-    def update_text(self, i,combat,output,grid_df,unit_series,merge_series,df_groups,info):
+    def update_text(self, i,combat,output,grid_df,unit_series,merge_series,info):
         # info + general info
         if grid_df is not None:
             grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('.png',''))
@@ -140,11 +140,6 @@ class RR_bot:
         if merge_series is not None:
             #merge_series['unit'] = merge_series['unit'].apply(lambda x: x.replace('.png',''))
             write_to_widget(self.root,self.merge_dump, merge_series.to_string())
-        #if df_groups is not None:
-        #    df_groups['unit'] = df_groups['unit'].apply(lambda x: x.replace('.png',''))
-        #    unit1, unit2 = df_groups.iloc[0:2]['unit']
-        #    rank  = df_groups.iloc[0]['rank']
-        #    self.logger.info(f"Rank {rank} {unit1}-> {unit2}")
 
 ###
 ### END OF GUI CLASS

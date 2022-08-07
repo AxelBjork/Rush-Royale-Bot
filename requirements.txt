@@ -7,3 +7,4 @@ ipykernel
 tqdm
 opencv-python
 ipywidgets
+tkinter

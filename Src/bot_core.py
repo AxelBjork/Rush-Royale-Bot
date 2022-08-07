@@ -199,12 +199,19 @@ class Bot:
         self.swipe(*unit_chosen)
         time.sleep(0.2)
         return merge_df
-        
+
     def log_merge(self,merge_df):
         merge_df['unit'] = merge_df['unit'].apply(lambda x: x.replace('.png',''))
         unit1, unit2 = merge_df.iloc[0:2]['unit']
         rank  = merge_df.iloc[0]['rank']
-        self.logger.info(f"Rank {rank} {unit1}-> {unit2}")
+        log_msg = f"Rank {rank} {unit1}-> {unit2}"
+        # Determine log level from rank
+        if rank >4:
+            self.logger.error(log_msg)
+        elif rank >2:
+            self.logger.debug(log_msg)
+        else:
+            self.logger.info(log_msg)
 
     # Find targets for special merge
     def special_merge(self,df_split,merge_series,target='zealot.png'):
