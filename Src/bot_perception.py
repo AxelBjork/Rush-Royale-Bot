@@ -112,6 +112,7 @@ def is_cursed(filename):
     return np.all(delta_color < 10)
 
 # Get status of current grid
+# Currently 0.082 seconds call, multithreading is about 0.64 seconds 
 def grid_status(names,prev_grid=None):  # Add multithreading of match unit, match rank??
     ref_units = os.listdir("units")
     ref_colors = [get_color('units/'+unit) for unit in ref_units]

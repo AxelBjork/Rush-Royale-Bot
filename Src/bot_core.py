@@ -24,8 +24,7 @@ class Bot:
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
-        self.screenshotName = 'bot_feed.png'
-        self.screenRGB = cv2.imread(self.screenshotName)
+        self.screenRGB = cv2.imread('bot_feed.png')
         self.client = Client(device=self.device)
         # Start scrcpy client
         self.client.start(threaded=True)
@@ -77,7 +76,6 @@ class Bot:
             self.shell('monkey -p com.my.defense 1')
             time.sleep(10) # wait for app to load
     # Take screenshot of device screen and load pixel values 
-    # Add screenshot demon which takes a screenshot every second-ish on separate thread
     def getScreen(self):
         p=Popen([".scrcpy\\adb",'-s',self.device, 'shell','/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],shell=True)
         p.wait()
@@ -85,7 +83,7 @@ class Bot:
         p=Popen([".scrcpy\\adb",'-s',self.device, 'pull', '/sdcard/bot_feed.png'],stdout=DEVNULL)
         p.wait()
         # Store screenshot in class variable
-        self.screenRGB = cv2.imread(self.screenshotName)
+        self.screenRGB = cv2.imread('bot_feed.png')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -116,8 +114,7 @@ class Bot:
         x,y = [140,1412]
         store_states_names = ['refresh','new_store','nothing','new_offer','spin_only']
         store_states=np.array([[255, 255, 255],[ 27, 235, 206],[63, 38, 12],[ 48, 253, 251],[ 80, 153, 193]])
-        img_rgb = cv2.imread(self.screenshotName)
-        store_rgb = img_rgb[y:y + 1, x:x + 1]
+        store_rgb = self.screenRGB[y:y + 1, x:x + 1]
         store_rgb = store_rgb[0][0]
         # Take mean square of rgb value and store states
         store_mse=((store_states - store_rgb)**2).mean(axis=1)
