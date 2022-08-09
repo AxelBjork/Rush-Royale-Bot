@@ -322,7 +322,7 @@ class Bot:
             if not (pos == np.array([0,0])).any():
                 self.click_button(pos+[0,85+400*(floor%3)]) #(only 1,2, 4,5, 7, 8 possible)
                 self.click_button((130,950))
-                time.sleep(2) # wait for matchmaking        
+                time.sleep(4) # wait for matchmaking        
 
     # Locate game home screen and try to start fight is chosen
     def battle_screen(self,start=False,pve=True,floor=5):
