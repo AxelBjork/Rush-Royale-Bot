@@ -46,6 +46,7 @@ def match_unit(filename,ref_colors,ref_units):
         mse = np.sum((ref_colors - color) ** 2, axis=1)
         if mse[mse.argmin()] < 2000:
             return ref_units[mse.argmin()], round(mse[mse.argmin()])
+    return ['empty.png',2000]
 
 
 # Get status of current grid
