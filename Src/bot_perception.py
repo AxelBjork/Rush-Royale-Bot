@@ -29,7 +29,7 @@ def get_color(filename,crop=False):
     flat_img_round = flat_img//20 * 20
     unique, counts = np.unique(flat_img_round, axis=0, return_counts=True)
     colors = np.zeros((5,3), dtype=int)
-    if len(unique)>10:
+    if len(unique)<10:
         return colors
     # Sort list
     sorted_count = np.sort(counts)[::-1]
