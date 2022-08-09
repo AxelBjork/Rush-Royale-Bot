@@ -240,15 +240,10 @@ class Bot:
         merge_series = adv_filter_keys(merge_series,'empty.png',remove=True)
         # Do special merge with dryad/Harley
         self.special_merge(df_split,merge_series,merge_target)
-        merge_chemist = adv_filter_keys(unit_series,'chemist.png',remove=False)
-        if not merge_chemist.empty:
-            max_chemist = merge_chemist.index.max()
-            # Remove 1 count of highest rank chemist
-            merge_series[merge_series.index == max_chemist] = merge_series[merge_series.index == max_chemist] - 1
+        merge_series = preserve_unit(merge_series,target='chemist.png')
         # Remove cauldrons
-        merge_cauldron = adv_filter_keys(merge_series,[1,['cauldron.png']],remove=False)
-        if not merge_cauldron.empty:
-            merge_series[merge_series.index == ('cauldron.png', 1)] = merge_series[merge_series.index == ('cauldron.png', 1)] - 4
+        for _ in range(4):
+                merge_series = preserve_unit(merge_series,target='cauldron.png',keep_min=True)
         # Select stuff to merge
         merge_series = merge_series[merge_series>=2] # At least 2 units
         # check if grid full
@@ -457,9 +452,36 @@ def get_unit_count(grid_df):
     unit_list=list(df_groups.index)
     return df_split,df_groups, unit_list
 
-# Split grid df into unique units and ranks
-# Shows total count of unit and count of each rank
+# Removes 1x of the highest rank unit from the merge_series
+def preserve_unit(unit_series,target='chemist.png',keep_min=False):
+    """
+    Remove 1x of the highest rank unit from the merge_series
+    param: merge_series - pandas series of units to remove
+    param: target - target unit to keep
+    param: keep_min - if true, keep the lowest rank unit instead of highest
+    """
+    merge_series= unit_series.copy()
+    preserve_series = adv_filter_keys(merge_series,target,remove=False)
+    if not preserve_series.empty:
+        if keep_min:
+            preserve_unit = preserve_series.index.min()
+        else:
+            preserve_unit = preserve_series.index.max()
+        # Remove 1 count of highest/lowest rank
+        merge_series[merge_series.index == preserve_unit] = merge_series[merge_series.index == preserve_unit] - 1
+        # Remove 0 counts
+        return  merge_series[merge_series > 0]
+    else:
+        return merge_series
+
+
 def grid_meta_info(grid_df,min_age=0):
+    """
+    Split grid df into unique units and ranks
+    Shows total count of unit and count of each rank
+    param: grid_df - pandas dataframe of grid
+    param: min_age - minimum age of unit to include in meta info
+    """
     # Split by unique unit
     df_groups=get_unit_count(grid_df)[1]
     grid_df = grid_df[grid_df['Age']>=min_age].reset_index(drop=True)
@@ -470,11 +492,17 @@ def grid_meta_info(grid_df,min_age=0):
     group_keys = list(unit_series.index)
     return df_split,unit_series, df_groups, group_keys
 
-# Returns all elements which match tokens value with multiple levels
-# Either provide list of list, list or unit type/unit rank and if remove from series or out
-# Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
-# If filter is only list of unit types must be in nested list [['zealot.png','crystal.png']]
+
 def adv_filter_keys(unit_series,tokens,remove=False):
+    """
+    Returns all elements which match tokens value with multiple levels
+    Either provide list of list, list or unit type/unit rank and if remove from series or out
+    Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
+    If filter is only list of unit types must be in nested list [['zealot.png','crystal.png']]
+    param: unit_series - pandas series of units to filter
+    param: tokens - list of list of unit types or unit ranks to filter
+    param: remove - if true, return filtered series, if false, return only matches
+    """
     if unit_series.empty:
         return pd.Series(dtype=object)
     if not isinstance(tokens, list): # Make token a list if not already
