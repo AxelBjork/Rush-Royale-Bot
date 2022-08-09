@@ -38,6 +38,8 @@ Install Latest Bluestacks 5
 
 Settings:
 
+(Display) Resolution: 1600 x 900
+
 (Graphics) Graphics engine mode: Compatibility (this can help if you have issues with scrcpy)
 
 (Advanced) Android Debug Bridge: Enabled - Note the port number here
