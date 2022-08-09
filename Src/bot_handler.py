@@ -95,7 +95,7 @@ def bot_loop(bot,info_event):
     user_level = np.fromstring(config['mana_level'], dtype=int, sep=',') 
     user_target = config['dps_unit'].split('.')[0]+'.png'
     # Load optional settings
-    require_shaman = config.get('require_shaman',False)
+    require_shaman = config.getboolean('require_shaman',False)
     max_loops = int(config.get('max_loops',50)) # this will increase time waiting when logging in from mobile
 
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
@@ -113,12 +113,12 @@ def bot_loop(bot,info_event):
             watch_ad = True 
             wait = 0
             combat+=1
-            #if require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
-            #    bot.logger.info('Shaman not found, checking again...')
-            #    if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(3)]):
-            #        continue
-            #    bot.logger.warning('Leaving game')
-            #    bot.restart_RR(quick_disconnect=True)
+            if require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
+                bot.logger.info('Shaman not found, checking again...')
+                if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(3)]):
+                    continue
+                bot.logger.warning('Leaving game')
+                bot.restart_RR(quick_disconnect=True)
             if combat>max_loops:
                 bot.restart_RR()
                 combat = 0
