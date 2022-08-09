@@ -96,7 +96,7 @@ def bot_loop(bot,info_event):
     user_target = config['dps_unit'].split('.')[0]+'.png'
     # Load optional settings
     require_shaman = config.get('require_shaman',False)
-    max_loops = config.get('max_loops',50) # this will increase time waiting when logging in from mobile
+    max_loops = int(config.get('max_loops',50)) # this will increase time waiting when logging in from mobile
 
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
