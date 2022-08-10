@@ -28,10 +28,12 @@ def get_color(filename,crop=False):
     flat_img = unit_img.reshape(-1, unit_img.shape[2])
     flat_img_round = flat_img//20 * 20
     unique, counts = np.unique(flat_img_round, axis=0, return_counts=True)
+    colors = np.zeros((5,3), dtype=int)
+    if len(unique)<10:
+        return colors
     # Sort list
     sorted_count = np.sort(counts)[::-1]
     # Get index of the most common colors
-    colors = np.zeros((5,3), dtype=int)
     for i in range(0,5):
         index = np.where(counts == sorted_count[i])[0][0]
         colors[i] = unique[index]
