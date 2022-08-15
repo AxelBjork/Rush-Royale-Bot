@@ -227,6 +227,20 @@ class Bot:
                     merge_df = self.merge_special_unit(df_split,merge_series_zealot,special_type='dryad.png')
                     break
         return merge_df
+    # Harley Merge target
+    def harley_merge(self,df_split,merge_series,target='knight_statue.png'):
+        merge_df = None
+        # Try to copy target
+        hq_series=adv_filter_keys(merge_series,'harlequin.png')
+        if not hq_series.empty:
+            hq_rank = hq_series.index.get_level_values('rank')
+            for rank in hq_rank:
+                merge_series_target=adv_filter_keys(merge_series,[rank,[target,'harlequin.png']])
+                if len(merge_series_target.index)==2:
+                    merge_df = self.merge_special_unit(df_split,merge_series_target,special_type='harlequin.png')
+                    break
+        return merge_df
+
     # Try to find a merge target and merge it
     def try_merge(self,rank=1,prev_grid=None,merge_target='zealot.png'):
         info=''
@@ -239,17 +253,32 @@ class Bot:
         # Remove empty groups
         merge_series = adv_filter_keys(merge_series,'empty.png',remove=True)
         # Do special merge with dryad/Harley
-        self.special_merge(df_split,merge_series,merge_target)
+        if merge_target == 'demon_hunter.png':
+            demon_series =merge_series.copy()
+            num_demon = sum(adv_filter_keys(demon_series,'demon_hunter.png'))
+            for _ in range(num_demon-1):
+                demon_series = preserve_unit(demon_series,target='demon_hunter.png',keep_min=True)
+            self.special_merge(df_split,demon_series,merge_target)
+            preserve_unit(merge_series,target='demon_hunter.png')
+        else:
+            self.special_merge(df_split,merge_series,merge_target)
         merge_series = preserve_unit(merge_series,target='chemist.png')
-        # Remove cauldrons
+        # Remove 4x cauldrons
         for _ in range(4):
                 merge_series = preserve_unit(merge_series,target='cauldron.png',keep_min=True)
+        # Try to keep knight_statue numbers even
+        num_knight = sum(adv_filter_keys(merge_series,'knight_statue.png'))
+        if num_knight%2==1:
+            self.harley_merge(df_split,merge_series,target='knight_statue.png')
+        # Preserve 2 highest knight statues
+        for _ in range(2):
+            merge_series = preserve_unit(merge_series,target='knight_statue.png')
         # Select stuff to merge
         merge_series = merge_series[merge_series>=2] # At least 2 units
         # check if grid full
         if ('empty.png',0) in group_keys:
             # Try to merge high priority units
-            merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png','summoner.png']])
+            merge_prio = adv_filter_keys(merge_series,[['chemist.png','monkey.png','summoner.png','dryad.png','knight_statue.png']])
             if not merge_prio.empty:
                 info='Merging High Priority!'
                 merge_df = self.merge_unit(df_split,merge_prio)
