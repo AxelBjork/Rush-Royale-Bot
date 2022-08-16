@@ -347,6 +347,7 @@ class Bot:
                 self.click_button(pos+[0,85+400*(floor%3)]) #(only 1,2, 4,5, 7, 8 possible)
                 self.click_button((130,950))
                 for i in range(10):
+                    time.sleep(2)
                     avail_buttons = self.get_current_icons(available=True)
                     # Look for correct chapter
                     self.logger.info(f'Waiting for match to start {i}')
