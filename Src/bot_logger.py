@@ -5,14 +5,17 @@ import re
 
 # Logger classes
 class TextHandler(logging.StreamHandler):
+
     def __init__(self, textctrl):
-        logging.StreamHandler.__init__(self) # initialize parent
+        logging.StreamHandler.__init__(self)  # initialize parent
         self.textctrl = textctrl
         # Load color map
         self.ansi_color_fg = {39: 'foreground default'}
         self.ansi_color_bg = {49: 'background default'}
         self.ansi_colors_dark = ['black', 'red', 'green', 'yellow', 'royal blue', 'magenta', 'cyan', 'light gray']
-        self.ansi_colors_light = ['dark gray', 'tomato', 'light green', 'light goldenrod', 'light blue', 'pink', 'light cyan', 'white']
+        self.ansi_colors_light = [
+            'dark gray', 'tomato', 'light green', 'light goldenrod', 'light blue', 'pink', 'light cyan', 'white'
+        ]
         # regular expressionto find ansi codes in string
         self.ansi_regexp = re.compile(r"\x1b\[((\d+;)*\d+)m")
 
@@ -32,15 +35,16 @@ class TextHandler(logging.StreamHandler):
     def emit(self, record):
         msg = self.format(record)
         self.textctrl.config(state="normal")
-        self.insert_ansi(msg,'' "end")
+        self.insert_ansi(msg, ''
+                         "end")
         #self.textctrl.insert("end", "\n")
         self.flush()
         # scroll to the bottom
         self.textctrl.see("end")
         self.textctrl.config(state="disabled")
-    
+
     # Functions to color messages according to utf-8 color codes set by formatter
-    def insert_ansi(self,txt, index="insert"):
+    def insert_ansi(self, txt, index="insert"):
         first_line, first_char = map(int, str(self.textctrl.index(index)).split("."))
         if index == "end":
             first_line -= 1
@@ -49,32 +53,33 @@ class TextHandler(logging.StreamHandler):
         if not lines:
             return
         # insert text without ansi codes
-        self.textctrl.insert(index, self.ansi_regexp.sub('', txt)+'\n')
+        self.textctrl.insert(index, self.ansi_regexp.sub('', txt) + '\n')
         # find all ansi codes in txt and apply corresponding tags
         opened_tags = {}  # we need to keep track of the opened tags to be able to do
-                          # text.tag_add(tag, start, end) when we reach a "closing" ansi code
+
+        # text.tag_add(tag, start, end) when we reach a "closing" ansi code
 
         def apply_formatting(code, code_index):
             if code == 0:  # reset all by closing all opened tag
                 for tag, start in opened_tags.items():
                     self.textctrl.tag_add(tag, start, code_index)
                 opened_tags.clear()
-            elif code in self.ansi_color_fg:    # open foreground color tag (and close previously opened one if any)
+            elif code in self.ansi_color_fg:  # open foreground color tag (and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('foreground'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
                         opened_tags.remove(tag)
                 opened_tags[self.ansi_color_fg[code]] = code_index
-            elif code in self.ansi_color_bg:    # open background color tag (and close previously opened one if any)
+            elif code in self.ansi_color_bg:  # open background color tag (and close previously opened one if any)
                 for tag in tuple(opened_tags):
                     if tag.startswith('background'):
                         self.textctrl.tag_add(tag, opened_tags[tag], code_index)
                         opened_tags.remove(tag)
                 opened_tags[self.ansi_color_bg[code]] = code_index
-        
+
         def find_ansi(line_txt, line_nb, char_offset):
             delta = -char_offset  # difference between the character position in the original line and in the text widget
-                                  # (initial offset due to insertion position if first line + extra offset due to deletion of ansi codes)
+            # (initial offset due to insertion position if first line + extra offset due to deletion of ansi codes)
             for match in self.ansi_regexp.finditer(line_txt):
                 codes = [int(c) for c in match.groups()[0].split(';')]
                 start, end = match.span()
@@ -82,12 +87,13 @@ class TextHandler(logging.StreamHandler):
                     apply_formatting(code, "{}.{}".format(line_nb, start - delta))
                 delta += end - start  # take into account offste due to deletion of ansi code
 
-        find_ansi(lines[0], first_line, first_char) # first line, with initial offset due to insertion position
+        find_ansi(lines[0], first_line, first_char)  # first line, with initial offset due to insertion position
         for line_nb, line in enumerate(lines[1:], first_line + 1):
-            find_ansi(line, line_nb, 0)   # next lines, no offset
+            find_ansi(line, line_nb, 0)  # next lines, no offset
         # close still opened tag
         for tag, start in opened_tags.items():
             self.textctrl.tag_add(tag, start, "end")
+
 
 class CustomFormatter(logging.Formatter):
 
@@ -109,12 +115,13 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt,"%H:%M")
+        formatter = logging.Formatter(log_fmt, "%H:%M")
         return formatter.format(record)
+
 
 # function used by bot gui to create color coded logs
 def create_log_feed(log_feed):
-    logging.basicConfig(filename='RR_bot.log',level=logging.DEBUG)
+    logging.basicConfig(filename='RR_bot.log', level=logging.DEBUG)
     logger = logging.getLogger(__name__)
     logger.handlers.clear()
     guiHandler = TextHandler(log_feed)
