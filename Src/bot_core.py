@@ -266,7 +266,7 @@ class Bot:
         # Remove 4x cauldrons
         for _ in range(4):
                 merge_series = preserve_unit(merge_series,target='cauldron.png',keep_min=True)
-        # Try to keep knight_statue numbers even
+        # Try to keep knight_statue numbers even (can conflict if special_merge already merged)
         num_knight = sum(adv_filter_keys(merge_series,'knight_statue.png'))
         if num_knight%2==1:
             self.harley_merge(df_split,merge_series,target='knight_statue.png')
