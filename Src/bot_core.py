@@ -1,38 +1,46 @@
-from asyncio import subprocess
 import os
 import time
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import logging
 from subprocess import Popen, DEVNULL
 # Android ADB
-from scrcpy import Client, const
+from scrcpy import Client, const, EVENT_FRAME
 # Image processing
 import cv2
 # internal
 import bot_perception
+import port_scan
 
 SLEEP_DELAY = 0.1
 
 
 class Bot:
 
-    def __init__(self, device='emulator-5554'):
+    def __init__(self, device=None):
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
+        if device is None:
+            device = port_scan.get_device()
+        if not device:
+            raise Exception("No device found!")
         self.device = device
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
-        self.screenRGB = cv2.imread('bot_feed.png')
-        self.client = Client(device=self.device)
+        self.screenRGB = None
+        self.frame_time = time.time()
+        # Start scrcpy client (10 fps, 12 mbps is best quality possible)
+        self.client = Client(device=self.device, max_fps=10, bitrate=1200000)  # 'OMX.google.h264.encoder'
+        self.client.add_listener(EVENT_FRAME, self.load_frame)
         # Start scrcpy client
         self.client.start(threaded=True)
         self.logger.info('Connecting to Bluestacks')
         time.sleep(0.5)
         # Turn off video stream (spammy)
-        self.client.alive = False
+        #self.client.alive = False
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.bot_stop = True
@@ -82,14 +90,30 @@ class Bot:
 
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],
-                  shell=True)
-        p.wait()
-        # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'pull', '/sdcard/bot_feed.png'], stdout=DEVNULL)
-        p.wait()
-        # Store screenshot in class variable
-        self.screenRGB = cv2.imread('bot_feed.png')
+        last_time = self.frame_time
+        # Wait for frame to be received
+        while (time.time() - 2 < last_time):
+            if self.frame_time != last_time:
+                break
+
+        #time.sleep(0.5)  # Dummy wait for load_frame to update, can be decreased down to 0.1 in theory
+
+        #p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],
+        #          shell=True)
+        #p.wait()
+        ## Using the adb command to upload the screenshot of the mobile phone to the current directory
+        #p = Popen([".scrcpy\\adb", '-s', self.device, 'pull', '/sdcard/bot_feed.png'], stdout=DEVNULL)
+        #p.wait()
+        ## Store screenshot in class variable
+        #self.screenRGB = cv2.imread('bot_feed.png')
+
+    # Scrcpy listener, will be called everytime a frame is received
+    def load_frame(self, frame):
+        if frame is not None:
+            #if time.time() - self.frame_time > 0.1:
+            # scrcpy image is 1600x896, stretch slightly
+            self.screenRGB = cv2.resize(frame, (900, 1600))
+            self.frame_time = time.time()
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
