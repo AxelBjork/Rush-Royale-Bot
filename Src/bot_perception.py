@@ -1,18 +1,10 @@
 import os
-import time
 import numpy as np
 import pandas as pd
-import random
-# Android ADB
-from scrcpy import Client, const
-import threading
-# Image processing
-from PIL import Image
 import cv2
 from sklearn.linear_model import LogisticRegression
 import pickle
 # internal
-import bot_core
 
 ####
 #### Unit type recognition
@@ -46,9 +38,10 @@ def match_unit(filename,ref_colors,ref_units):
     # Find closest match (mean squared error)
     for color in unit_colors:
         mse = np.sum((ref_colors - color) ** 2, axis=1)
-        if mse[mse.argmin()] < 2000:
+        # Dryad sometimes needs 2000 to match
+        if mse[mse.argmin()] <= 2000:
             return ref_units[mse.argmin()], round(mse[mse.argmin()])
-    return ['empty.png',2000]
+    return ['empty.png',2001]
 
 
 # Get status of current grid
@@ -86,6 +79,21 @@ def match_rank(filename):
         classes = logreg.classes_
     prob = logreg.predict_proba(edges.reshape(1,-1))
     return prob.argmax(),round(prob.max(),3)
+
+# Fill find highest rank knight_statue adjacent to key_target
+def position_filter(grid_df,key_target='demon_hunter.png'):
+    demon_grid = grid_df[grid_df['unit'] == key_target]
+    # Get max value index  in rank column
+    demon_grid = demon_grid.sort_values(by='rank',ascending=False)
+    unit_pos = demon_grid.iloc[0]['grid_pos']
+    adjacent = unit_pos - np.array([[0,-1],[0,1],[-1,0],[1,0]])
+    # Keep only column values between 0 and 4 (bad rows are filtered out by isin)
+    adjacent = adjacent[np.logical_and(adjacent[:,1]>=0,adjacent[:,1]<=4)]
+    # Convert grid_pos to id 0-15 and extract rows
+    adj_df = grid_df[grid_df.index.isin(adjacent[0:,0]*5+adjacent[0:,1])]
+    adj_knights = adj_df[adj_df['unit'] == 'knight_statue.png'].sort_values(by='rank',ascending=True)
+    key_pos = adj_knights.index[-1]
+    return key_pos
 
 ## Add to dataset
 def add_grid_to_dataset():
