@@ -10,6 +10,7 @@ from scrcpy import Client, const
 import cv2
 # internal
 import bot_perception
+import port_scan
 
 SLEEP_DELAY = 0.1
 
@@ -24,9 +25,13 @@ class Bot:
             device = port_scan.get_device()
         if not device:
             raise Exception("No device found!")
+        self.device = device
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
+        # Check if 'bot_feed.png' exists
+        if not os.path.isfile('bot_feed.png'):
+            self.getScreen()
         self.screenRGB = cv2.imread('bot_feed.png')
         self.client = Client(device=self.device)
         # Start scrcpy client
@@ -85,11 +90,7 @@ class Bot:
 
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],
-                  shell=True)
-        p.wait()
-        # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'pull', '/sdcard/bot_feed.png'], stdout=DEVNULL)
+        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', 'bot_feed.png'],shell=True)
         p.wait()
         # Store screenshot in class variable
         self.screenRGB = cv2.imread('bot_feed.png')
