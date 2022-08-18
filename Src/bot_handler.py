@@ -60,19 +60,7 @@ def start_bot_class(logger):
     # auto-install scrcpy if needed
     if not check_scrcpy(logger):
         return None
-    device = port_scan.get_device()
-    if device is None:
-        raise Exception("No device found!")
-    # Start Scrcpy once per restart
-    if 'started_scrcpy' not in globals():
-        global started_scrcpy
-        started_scrcpy = True
-        logger.info(f'Connecting Scrcpy to {device}')
-        proc = Popen(['.scrcpy/scrcpy', '-s', device], stdout=DEVNULL)
-        time.sleep(1)  # <-- sleep for 1 second
-        proc.terminate()  # <-- terminate the process (Scrcpy window i2s not needed)
-    logger.debug(f'Minimizing Scrcpy window')
-    bot = bot_core.Bot(device)
+    bot = bot_core.Bot()
     return bot
 
 

@@ -17,7 +17,6 @@ class RR_bot:
         # State variables
         self.stop_flag = False
         self.running = False
-        self.bot_initalized = threading.Event()
         self.info_ready = threading.Event()
         # Read config file
         self.config = configparser.ConfigParser()
@@ -58,6 +57,10 @@ class RR_bot:
         self.thread_run.join()
         self.thread_init.join()
         self.root.destroy()
+        try:
+            self.bot_instance.client.stop()
+        except:
+            pass
 
     # Initilzie the thread for main bot
     def start_command(self):
@@ -66,19 +69,9 @@ class RR_bot:
         if self.running:
             return
         self.running = True
-        # Start initalization thread if not already done
-        if not self.bot_initalized.isSet():
-            self.thread_init = threading.Thread(target=self.init_bot, args=())
-            self.thread_init.start()
-        # Start main thread which will wait on bot_initalized
+        # Start main thread
         self.thread_run = threading.Thread(target=self.start_bot, args=())
         self.thread_run.start()
-
-    # Initialize the bot
-    def init_bot(self):
-        self.logger.warning('Starting bot...')
-        self.bot_instance = bot_handler.start_bot_class(self.logger)
-        self.bot_initalized.set()
 
     # Update config file
     def update_config(self):
@@ -105,10 +98,6 @@ class RR_bot:
     # Run the bot
     def start_bot(self):
         # Wait for started thread to be done
-        self.bot_initalized.wait(timeout=30)
-        self.thread_init.join()  # Eat finished thread
-        self.logger.info('Started bot!')
-        os.system('cls')
         os.system("type src\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()
@@ -130,6 +119,7 @@ class RR_bot:
                 self.bot_instance.bot_stop = True
                 self.logger.warning('Exiting main loop...')
                 thread_bot.join()
+                self.bot_instance.client.stop()
                 self.logger.info('Bot stopped!')
                 self.logger.critical('Safe to close gui')
                 return

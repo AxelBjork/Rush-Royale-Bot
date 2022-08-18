@@ -64,6 +64,8 @@ def get_adb_device():
 
 
 def get_device():
+    p = Popen([".scrcpy\\adb", 'kill-server'])
+    p.wait()
     p = Popen('.scrcpy\\adb devices', shell=True, stdout=DEVNULL)
     p.wait()
     # Check if adb got connected

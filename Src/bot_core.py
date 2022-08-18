@@ -1,4 +1,3 @@
-from asyncio import subprocess
 import os
 import time
 import numpy as np
@@ -17,11 +16,14 @@ SLEEP_DELAY = 0.1
 
 class Bot:
 
-    def __init__(self, device='emulator-5554'):
+    def __init__(self, device=None):
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
-        self.device = device
+        if device is None:
+            device = port_scan.get_device()
+        if not device:
+            raise Exception("No device found!")
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
@@ -41,7 +43,8 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'.scrcpy\\adb -s {self.device} shell {cmd}')
+        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
+        p.wait()
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
