@@ -100,7 +100,7 @@ class RR_bot:
         # Wait for started thread to be done
         self.logger.warning('Starting bot...')
         self.bot_instance = bot_handler.start_bot_class(self.logger)
-        os.system('cls')
+        #os.system('cls')
         os.system("type src\startup_message.txt")
         self.update_units()
         infos_ready = threading.Event()

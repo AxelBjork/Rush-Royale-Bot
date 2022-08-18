@@ -27,13 +27,12 @@ class Bot:
         if not device:
             raise Exception("No device found!")
         self.device = device
-        self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         self.screenRGB = None
         self.frame_time = time.time()
         # Start scrcpy client (10 fps, 12 mbps is best quality possible)
-        self.client = Client(device=self.device, max_fps=10, bitrate=1200000)  # 'OMX.google.h264.encoder'
+        self.client = Client(device=self.device)  # , max_fps=10, bitrate=1200000
         self.client.add_listener(EVENT_FRAME, self.load_frame)
         # Start scrcpy client
         self.client.start(threaded=True)
@@ -49,7 +48,9 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'.scrcpy\\adb -s {self.device} shell {cmd}')
+        #os.system(f'.scrcpy\\adb -s {self.device} shell {cmd}')
+        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
+        p.wait()
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
@@ -95,9 +96,6 @@ class Bot:
         while (time.time() - 2 < last_time):
             if self.frame_time != last_time:
                 break
-
-        #time.sleep(0.5)  # Dummy wait for load_frame to update, can be decreased down to 0.1 in theory
-
         #p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],
         #          shell=True)
         #p.wait()
