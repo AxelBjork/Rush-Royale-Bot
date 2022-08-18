@@ -1,4 +1,3 @@
-from asyncio import subprocess
 import os
 import time
 import numpy as np
@@ -11,21 +10,30 @@ from scrcpy import Client, const
 import cv2
 # internal
 import bot_perception
+import port_scan
 
 SLEEP_DELAY = 0.1
 
 
 class Bot:
 
-    def __init__(self, device='emulator-5554'):
+    def __init__(self, device=None):
         self.bot_stop = False
         self.combat = self.output = self.grid_df = self.unit_series = self.merge_series = self.df_groups = self.info = self.combat_step = None
         self.logger = logging.getLogger('__main__')
+        if device is None:
+            device = port_scan.get_device()
+        if not device:
+            raise Exception("No device found!")
         self.device = device
+        self.bot_id = self.device.split(':')[-1]
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
-        self.screenRGB = cv2.imread('bot_feed.png')
+        # Check if 'bot_feed.png' exists
+        if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
+            self.getScreen()
+        self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
         self.client = Client(device=self.device)
         # Start scrcpy client
         self.client.start(threaded=True)
@@ -41,7 +49,8 @@ class Bot:
 
     # Function to send ADB shell command
     def shell(self, cmd):
-        os.system(f'.scrcpy\\adb -s {self.device} shell {cmd}')
+        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', cmd], stdout=DEVNULL, stderr=DEVNULL)
+        p.wait()
 
     # Send ADB to click screen
     def click(self, x, y, delay_mult=1):
@@ -82,14 +91,11 @@ class Bot:
 
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'shell', '/system/bin/screencap', '-p', '/sdcard/bot_feed.png'],
-                  shell=True)
-        p.wait()
-        # Using the adb command to upload the screenshot of the mobile phone to the current directory
-        p = Popen([".scrcpy\\adb", '-s', self.device, 'pull', '/sdcard/bot_feed.png'], stdout=DEVNULL)
+        bot_id = self.device.split(':')[-1]
+        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
         p.wait()
         # Store screenshot in class variable
-        self.screenRGB = cv2.imread('bot_feed.png')
+        self.screenRGB = cv2.imread(f'bot_feed_{bot_id}.png')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -274,7 +280,8 @@ class Bot:
         # Do special merge with dryad/Harley
         if merge_target == 'demon_hunter.png':
             demon_series = merge_series.copy()
-            num_demon = sum(adv_filter_keys(demon_series, 'demon_hunter.png'))
+            # Take all rank 5, 6, 7 demons + lowest remaining for dryad rank up
+            num_demon = sum(adv_filter_keys(demon_series, [list(range(1, 5)), ['demon_hunter.png']]))
             for _ in range(num_demon - 1):
                 demon_series = preserve_unit(demon_series, target='demon_hunter.png', keep_min=True)
             self.special_merge(df_split, demon_series, merge_target)
@@ -602,7 +609,7 @@ def adv_filter_keys(unit_series, tokens, remove=False):
         else:
             continue
     # LOOP DONE
-    if remove:
+    if remove and len(merge_series) != len(unit_series):
         # Remove all matches found from original series
         merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
     # Return matches found

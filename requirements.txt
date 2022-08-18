@@ -1,8 +1,8 @@
 numpy
 pandas
 Pillow
-scikit_learn
-scrcpy
+scikit_learn==1.1.1
+scrcpy-client
 ipykernel
 tqdm
 opencv-python
