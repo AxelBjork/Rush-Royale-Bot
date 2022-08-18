@@ -26,13 +26,14 @@ class Bot:
         if not device:
             raise Exception("No device found!")
         self.device = device
+        self.bot_id = self.device.split(':')[-1]
         self.shell(f'.scrcpy\\adb connect {self.device}')
         # Try to launch application through ADB shell
         self.shell('monkey -p com.my.defense 1')
         # Check if 'bot_feed.png' exists
-        if not os.path.isfile('bot_feed.png'):
+        if not os.path.isfile(f'bot_feed_{self.bot_id}.png'):
             self.getScreen()
-        self.screenRGB = cv2.imread('bot_feed.png')
+        self.screenRGB = cv2.imread(f'bot_feed_{self.bot_id}.png')
         self.client = Client(device=self.device)
         # Start scrcpy client
         self.client.start(threaded=True)
@@ -280,7 +281,7 @@ class Bot:
         if merge_target == 'demon_hunter.png':
             demon_series = merge_series.copy()
             # Take all rank 5, 6, 7 demons + lowest remaining for dryad rank up
-            num_demon = sum(adv_filter_keys(demon_series, [[5, 6, 7], ['demon_hunter.png']]))
+            num_demon = sum(adv_filter_keys(demon_series, [list(range(1, 5)), ['demon_hunter.png']]))
             for _ in range(num_demon - 1):
                 demon_series = preserve_unit(demon_series, target='demon_hunter.png', keep_min=True)
             self.special_merge(df_split, demon_series, merge_target)
@@ -608,7 +609,7 @@ def adv_filter_keys(unit_series, tokens, remove=False):
         else:
             continue
     # LOOP DONE
-    if remove:
+    if remove and len(merge_series) != len(unit_series):
         # Remove all matches found from original series
         merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
     # Return matches found
