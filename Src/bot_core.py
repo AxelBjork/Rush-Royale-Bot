@@ -90,10 +90,11 @@ class Bot:
 
     # Take screenshot of device screen and load pixel values
     def getScreen(self):
-        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', 'bot_feed.png'],shell=True)
+        bot_id = self.device.split(':')[-1]
+        p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
         p.wait()
         # Store screenshot in class variable
-        self.screenRGB = cv2.imread('bot_feed.png')
+        self.screenRGB = cv2.imread(f'bot_feed_{bot_id}.png')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -278,7 +279,8 @@ class Bot:
         # Do special merge with dryad/Harley
         if merge_target == 'demon_hunter.png':
             demon_series = merge_series.copy()
-            num_demon = sum(adv_filter_keys(demon_series, 'demon_hunter.png'))
+            # Take all rank 5, 6, 7 demons + lowest remaining for dryad rank up
+            num_demon = sum(adv_filter_keys(demon_series, [[5, 6, 7], ['demon_hunter.png']]))
             for _ in range(num_demon - 1):
                 demon_series = preserve_unit(demon_series, target='demon_hunter.png', keep_min=True)
             self.special_merge(df_split, demon_series, merge_target)
