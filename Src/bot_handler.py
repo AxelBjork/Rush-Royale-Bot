@@ -90,7 +90,7 @@ def bot_loop(bot, info_event):
     user_target = config['dps_unit'].split('.')[0] + '.png'
     # Load optional settings
     require_shaman = config.getboolean('require_shaman', False)
-    max_loops = int(config.get('max_loops', 50))  # this will increase time waiting when logging in from mobile
+    max_loops = int(config.get('max_loops', 100))  # this will increase time waiting when logging in from mobile
 
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
@@ -107,47 +107,46 @@ def bot_loop(bot, info_event):
             watch_ad = True
             wait = 0
             combat += 1
-            if require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
-                bot.logger.info('Shaman not found, checking again...')
-                if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(3)]):
-                    continue
-                bot.logger.warning('Leaving game')
-                bot.restart_RR(quick_disconnect=True)
             if combat > max_loops:
                 bot.restart_RR()
                 combat = 0
                 continue
-            for i in range(8):
-                grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
-                    bot, grid_df, user_level, user_target)
-                bot.grid_df = grid_df.copy()
-                bot.combat = combat
-                bot.output = output[1]
-                bot.combat_step = i
-                info_event.set()
-                if bot.bot_stop:
-                    return
+            elif require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
+                bot.logger.info('Shaman not found, checking again...')
+                if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(1)]):
+                    continue
+                bot.logger.warning('Leaving game')
+                bot.restart_RR(quick_disconnect=True)
+            else:
+                for i in range(8):
+                    grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
+                        bot, grid_df, user_level, user_target)
+                    bot.grid_df = grid_df.copy()
+                    bot.combat = combat
+                    bot.output = output[1]
+                    bot.combat_step = i
+                    info_event.set()
+                    if bot.bot_stop:
+                        return
             # Wait until late stage in combat and if consistency is ok, not stagnate save all units for ML model
             if combat == 25 and 5 < grid_df['Age'].mean() < 50 and train_ai:
                 bot_perception.add_grid_to_dataset()
         elif output[1] == 'home' and watch_ad:
-            for i in range(3):
-                bot.watch_ads()
+            bot.watch_ads()
             watch_ad = False
         else:
             combat = 0
+            bot.logger.info(f'{output[1]}, wait count: {wait}')
             output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)  #(only 1,2,4,5,7,8,10 possible)
             wait += 1
             if wait > 40:
                 bot.logger.info('RESTARTING')
                 bot.restart_RR(),
                 wait = 0
-            bot.logger.info(f'{output[1]}, wait count: {wait}')
 
 
 def check_scrcpy(logger):
     if os.path.exists('.scrcpy/scrcpy.exe'):
-        logger.info('scrcpy is installed')
         return True
     else:
         logger.info('scrcpy is not installed')

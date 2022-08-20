@@ -280,12 +280,16 @@ class Bot:
         # Do special merge with dryad/Harley
         if merge_target == 'demon_hunter.png':
             demon_series = merge_series.copy()
-            # Take all rank 5, 6, 7 demons + lowest remaining for dryad rank up
+            # Take all rank 5, 6, 7 demons + 5 remaining for dryad (shaman) rank up
             num_demon = sum(adv_filter_keys(demon_series, [list(range(1, 5)), ['demon_hunter.png']]))
-            for _ in range(num_demon - 1):
+            for _ in range(num_demon - 5):
                 demon_series = preserve_unit(demon_series, target='demon_hunter.png', keep_min=True)
             self.special_merge(df_split, demon_series, merge_target)
-            preserve_unit(merge_series, target='demon_hunter.png')
+            # preserve_unit(merge_series, target='demon_hunter.png')
+            # Use harely to create more demons
+            self.harley_merge(df_split, merge_series, target='demon_hunter.png')
+            # Remove all demons
+            merge_series = adv_filter_keys(merge_series, 'demon_hunter.png', remove=True)
         else:
             self.special_merge(df_split, merge_series, merge_target)
         merge_series = preserve_unit(merge_series, target='chemist.png')
@@ -305,7 +309,7 @@ class Bot:
         if ('empty.png', 0) in group_keys:
             # Try to merge high priority units
             merge_prio = adv_filter_keys(
-                merge_series, [['chemist.png', 'monkey.png', 'summoner.png', 'dryad.png', 'knight_statue.png']])
+                merge_series, [['chemist.png', 'bombardier.png', 'summoner.png', 'dryad.png', 'knight_statue.png']])
             if not merge_prio.empty:
                 info = 'Merging High Priority!'
                 merge_df = self.merge_unit(df_split, merge_prio)
@@ -350,28 +354,33 @@ class Bot:
         avail_buttons = self.get_current_icons(available=True)
         # Check if on dungeon page
         if (avail_buttons == 'dungeon_page.png').any(axis=None):
-            # Swipe to the top
-            [self.swipe([0, 0], [2, 0]) for i in range(10)]
-            self.click(30, 600, 5)  # stop scroll and scan screen for buttons
-            # Keep swiping until floor is found
-            for i in range(10):
-                avail_buttons = self.get_current_icons(available=True)
-                # Look for correct chapter
-                if (avail_buttons == target_chapter).any(axis=None):
-                    pos = get_button_pos(avail_buttons, target_chapter)
-                    if not expanded:
-                        expanded = 1
-                        self.click_button(pos + [500, 90])
-                    # check button is near top of screen
-                    if pos[1] < 550:
-                        # Stop scrolling
-                        break
-                # Swipe down (change to swipe up for floor 10 cleared)
-                [self.swipe([2, 0], [0, 0]) for i in range(1)]
-                self.click(30, 600)  # stop scroll and scan screen for buttons
-            ## Click play floor if found
+            # Fast select floor 10 if selected
+            if floor == 10 and (avail_buttons == target_chapter).any(axis=None):
+                # Start floor
+                pos = np.array([450, 1200 - 485])
+            else:
+                # Swipe to the top
+                [self.swipe([0, 0], [2, 0]) for i in range(10)]
+                self.click(30, 600, 5)  # stop scroll and scan screen for buttons
+                # Keep swiping until floor is found
+                for i in range(10):
+                    avail_buttons = self.get_current_icons(available=True)
+                    # Look for correct chapter
+                    if (avail_buttons == target_chapter).any(axis=None):
+                        pos = get_button_pos(avail_buttons, target_chapter)
+                        if not expanded:
+                            expanded = 1
+                            self.click_button(pos + [500, 90])
+                        # check button is near top of screen
+                        if pos[1] < 550:
+                            # Stop scrolling
+                            break
+                    # Swipe down (change to swipe up for floor 10 cleared)
+                    [self.swipe([2, 0], [0, 0]) for i in range(1)]
+                    self.click(30, 600)  # stop scroll and scan screen for buttons
+            # Click play floor if found
             if not (pos == np.array([0, 0])).any():
-                self.click_button(pos + [0, 85 + 400 * (floor % 3)])  #(only 1,2, 4,5, 7, 8 possible)
+                self.click_button(pos + [0, 85 + 400 * (floor % 3)])  #(only 1,2, 4,5, 7, 8, 10)
                 self.click_button((130, 950))
                 for i in range(10):
                     time.sleep(2)
@@ -411,9 +420,7 @@ class Bot:
     # Navigate and locate store refresh button from battle screen
     def find_store_refresh(self):
         self.click_button((100, 1500))  # Click store button
-        [self.swipe([0, 0], [2, 0]) for i in range(20)]  # swipe to top
-        self.swipe([2, 0], [0, 0])  # Swipe down once
-        time.sleep(1)
+        [self.swipe([0, 0], [2, 0]) for i in range(5)]  # swipe to top
         self.click(30, 150)  # stop scroll
         avail_buttons = self.get_current_icons(available=True)
         if (avail_buttons == 'refresh_button.png').any(axis=None):
@@ -422,29 +429,20 @@ class Bot:
 
     # Refresh items in shop when available
     def refresh_shop(self):
-        store_state = self.get_store_state()
-        if store_state in ['nothing', 'spin_only']:
-            pass
-        elif store_state == 'new_offer':
-            self.click_button((100, 1500))  # Click store button
-            self.click_button((500, 1500))  # Click battle button
-            self.click_button((100, 1500))  # Click store button
-        elif store_state == 'refresh':
-            pos = self.find_store_refresh()
-            if not pos is None:
-                self.click_button(pos)
-                self.logger.info('refreshed!')
-        elif store_state == 'new_store':
-            pos = self.find_store_refresh()
-            if not pos is None:
-                # Buy first and last item (possible legendary) before refresh
-                self.click_button(pos - [300, 820])  # Click first (free) item
-                self.click(400, 1165)  # buy
-                self.click(30, 150)  # remove pop-up
-                self.click_button(pos + [400, -400])  # Click last item (possible legendary)
-                self.click(400, 1165)  # buy
-                self.logger.critical('Bought store units!')
-        return store_state
+        self.click_button((100, 1500))  # Click store button
+        self.click_button((475, 1300))  # Click store button
+        # Scroll up and find the refresh button
+        pos = self.find_store_refresh()
+        if isinstance(pos, np.ndarray):
+            self.click_button(pos - [300, 820])  # Click first (free) item
+            self.click(400, 1165)  # buy
+            self.click(30, 150)  # remove pop-up
+            self.click_button(pos + [400, -400])  # Click last item (possible legendary)
+            self.click(400, 1165)  # buy
+            self.click(30, 150)  # remove pop-up
+            self.logger.warning('Bought store units!')
+            # Try to refresh shop (watch ad)
+            self.click_button(pos)
 
     def watch_ads(self):
         avail_buttons = self.get_current_icons(available=True)
@@ -463,29 +461,31 @@ class Bot:
             pos = get_button_pos(avail_buttons, 'ad_pve.png')
             self.click_button(pos)
         elif (avail_buttons == 'battle_icon.png').any(axis=None):
-            store_state = self.refresh_shop()
-            store_state = 'nothing'
-            if store_state == 'nothing' or store_state == 'spin_only':
-                self.logger.info('Watched all ads!')
-                return
+            self.refresh_shop()
         else:
-            self.logger.info('Watched all ads!')
+            #self.logger.info('Watched all ads!')
             return
-        time.sleep(30)
-        # Keep watching until back in menu
-        for i in range(10):
-            avail_buttons, status = self.battle_screen()
-            if status == 'menu' or status == 'home':
-                self.logger.info('FINISHED AD')
-                return  # Exit function
-            time.sleep(2)
-            self.click(870, 30)  # skip forward/click X
-            self.click(870, 100)  # click X playstore popup
-            if i > 5:
-                self.shell(f'input keyevent {const.KEYCODE_BACK}')  #Force back
-            self.logger.info(f'AD TIME {i} {status}')
-        # Restart game if can't escape ad
-        self.restart_RR()
+        # Check if ad was started
+        avail_buttons, status = self.battle_screen()
+        if status == 'menu' or status == 'home' or (avail_buttons == 'refresh_button.png').any(axis=None):
+            self.logger.info('FINISHED AD')
+        # Watch ad
+        else:
+            time.sleep(30)
+            # Keep watching until back in menu
+            for i in range(10):
+                avail_buttons, status = self.battle_screen()
+                if status == 'menu' or status == 'home':
+                    self.logger.info('FINISHED AD')
+                    return  # Exit function
+                time.sleep(2)
+                self.click(870, 30)  # skip forward/click X
+                self.click(870, 100)  # click X playstore popup
+                if i > 5:
+                    self.shell(f'input keyevent {const.KEYCODE_BACK}')  #Force back
+                self.logger.info(f'AD TIME {i} {status}')
+            # Restart game if can't escape ad
+            self.restart_RR()
 
 
 ####
