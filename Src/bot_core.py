@@ -278,20 +278,20 @@ class Bot:
         # Remove empty groups
         merge_series = adv_filter_keys(merge_series, 'empty.png', remove=True)
         # Do special merge with dryad/Harley
+        self.special_merge(df_split, merge_series, merge_target)
+        # Use harely on high dps targets
         if merge_target == 'demon_hunter.png':
-            demon_series = merge_series.copy()
-            # Take all rank 5, 6, 7 demons + 5 remaining for dryad (shaman) rank up
-            num_demon = sum(adv_filter_keys(demon_series, [list(range(1, 5)), ['demon_hunter.png']]))
-            for _ in range(num_demon - 5):
-                demon_series = preserve_unit(demon_series, target='demon_hunter.png', keep_min=True)
-            self.special_merge(df_split, demon_series, merge_target)
-            # preserve_unit(merge_series, target='demon_hunter.png')
-            # Use harely to create more demons
-            self.harley_merge(df_split, merge_series, target='demon_hunter.png')
-            # Remove all demons
+            self.harley_merge(df_split, merge_series, target=merge_target)
+            # Remove all demons (for co-op)
+            demons = adv_filter_keys(merge_series, ['demon_hunter.png'])
+            num_demon = sum(demons)
+            if num_demon >= 11:
+                # If board is mostly demons, chill out
+                self.logger.info(
+                    f'Board is full of demons, total ranks: {sum(demons.values * demons.index.get_level_values("rank"))}'
+                )
+                time.sleep(10)
             merge_series = adv_filter_keys(merge_series, 'demon_hunter.png', remove=True)
-        else:
-            self.special_merge(df_split, merge_series, merge_target)
         merge_series = preserve_unit(merge_series, target='chemist.png')
         # Remove 4x cauldrons
         for _ in range(4):
@@ -308,8 +308,8 @@ class Bot:
         # check if grid full
         if ('empty.png', 0) in group_keys:
             # Try to merge high priority units
-            merge_prio = adv_filter_keys(
-                merge_series, [['chemist.png', 'bombardier.png', 'summoner.png', 'dryad.png', 'knight_statue.png']])
+            merge_prio = adv_filter_keys(merge_series,
+                                         [['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png']])
             if not merge_prio.empty:
                 info = 'Merging High Priority!'
                 merge_df = self.merge_unit(df_split, merge_prio)
@@ -325,14 +325,14 @@ class Bot:
             else:
                 info = 'need more units!'
         # If grid seems full, merge more units
-        else:
-            info = 'Full Grid - Merging!'
-            # Remove all high level dps units
-            merge_series = adv_filter_keys(merge_series,
-                                           [[3, 4, 5, 6, 7], ['zealot.png', 'crystal.png', 'bruser.png', merge_target]],
-                                           remove=True)
-            if not merge_series.empty:
-                merge_df = self.merge_unit(df_split, merge_series)
+        # else:
+        #     info = 'Full Grid - Merging!'
+        #     # Remove all high level dps units
+        #     merge_series = adv_filter_keys(merge_series,
+        #                                    [[3, 4, 5, 6, 7], ['zealot.png', 'crystal.png', 'bruser.png', merge_target]],
+        #                                    remove=True)
+        #     if not merge_series.empty:
+        #         merge_df = self.merge_unit(df_split, merge_series)
         return grid_df, unit_series, merge_series, merge_df, info
 
     # Mana level cards
@@ -398,6 +398,9 @@ class Bot:
             # list of buttons
             if (df == 'fighting.png').any(axis=None) and not (df == '0cont_button.png').any(axis=None):
                 return df, 'fighting'
+            if (df == 'friend_menu.png').any(axis=None):
+                self.click_button(np.array([100, 600]))
+                return df, 'friend_menu'
             # Start pvp if homescreen
             if (df == 'home_screen.png').any(axis=None) and (df == 'battle_icon.png').any(axis=None):
                 if pve and start:
@@ -611,7 +614,8 @@ def adv_filter_keys(unit_series, tokens, remove=False):
     # LOOP DONE
     if remove and len(merge_series) != len(unit_series):
         # Remove all matches found from original series
-        merge_series = unit_series[~unit_series.index.isin(merge_series.index)]
+        series = unit_series.copy()
+        merge_series = series[~series.index.isin(merge_series.index)]
     # Return matches found
     return merge_series
 
