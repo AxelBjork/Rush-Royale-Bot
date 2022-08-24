@@ -209,7 +209,7 @@ class Bot:
     def merge_special_unit(self, df_split, merge_series, special_type):
         # Get special merge unit
         special_unit, normal_unit = [
-            adv_filter_keys(merge_series, special_type, remove=remove) for remove in [False, True]
+            adv_filter_keys(merge_series, units=special_type, remove=remove) for remove in [False, True]
         ]  # scrapper support not tested
         # Get corresponding dataframes
         special_df, normal_df = [df_split.get_group(unit.index[0]).sample() for unit in [special_unit, normal_unit]]
@@ -238,12 +238,12 @@ class Bot:
     def special_merge(self, df_split, merge_series, target='zealot.png'):
         merge_df = None
         # Try to rank up dryads
-        dryads_series = adv_filter_keys(merge_series, 'dryad.png')
+        dryads_series = adv_filter_keys(merge_series, units='dryad.png')
         if not dryads_series.empty:
             dryads_rank = dryads_series.index.get_level_values('rank')
             for rank in dryads_rank:
-                merge_series_dryad = adv_filter_keys(merge_series, [rank, ['harlequin.png', 'dryad.png']])
-                merge_series_zealot = adv_filter_keys(merge_series, [rank, [target, 'dryad.png']])
+                merge_series_dryad = adv_filter_keys(merge_series, units=['harlequin.png', 'dryad.png'], ranks=rank)
+                merge_series_zealot = adv_filter_keys(merge_series, units=['dryad.png', target], ranks=rank)
                 if len(merge_series_dryad.index) == 2:
                     merge_df = self.merge_special_unit(df_split, merge_series_dryad, special_type='harlequin.png')
                     break
@@ -256,11 +256,11 @@ class Bot:
     def harley_merge(self, df_split, merge_series, target='knight_statue.png'):
         merge_df = None
         # Try to copy target
-        hq_series = adv_filter_keys(merge_series, 'harlequin.png')
+        hq_series = adv_filter_keys(merge_series, units='harlequin.png')
         if not hq_series.empty:
             hq_rank = hq_series.index.get_level_values('rank')
             for rank in hq_rank:
-                merge_series_target = adv_filter_keys(merge_series, [rank, [target, 'harlequin.png']])
+                merge_series_target = adv_filter_keys(merge_series, units=['harlequin.png', target], ranks=rank)
                 if len(merge_series_target.index) == 2:
                     merge_df = self.merge_special_unit(df_split, merge_series_target, special_type='harlequin.png')
                     break
@@ -276,28 +276,28 @@ class Bot:
         # Select stuff to merge
         merge_series = unit_series.copy()
         # Remove empty groups
-        merge_series = adv_filter_keys(merge_series, 'empty.png', remove=True)
+        merge_series = adv_filter_keys(merge_series, units='empty.png', remove=True)
         # Do special merge with dryad/Harley
         self.special_merge(df_split, merge_series, merge_target)
         # Use harely on high dps targets
         if merge_target == 'demon_hunter.png':
             self.harley_merge(df_split, merge_series, target=merge_target)
             # Remove all demons (for co-op)
-            demons = adv_filter_keys(merge_series, ['demon_hunter.png'])
+            demons = adv_filter_keys(merge_series, units='demon_hunter.png')
             num_demon = sum(demons)
             if num_demon >= 11:
                 # If board is mostly demons, chill out
                 self.logger.info(
-                    f'Board is full of demons, total ranks: {sum(demons.values * demons.index.get_level_values("rank"))}'
-                )
+                    f'Board is full of demons, waiting...')
                 time.sleep(10)
-            merge_series = adv_filter_keys(merge_series, 'demon_hunter.png', remove=True)
+            if self.config.getboolean('bot', 'require_shaman'):
+                merge_series = adv_filter_keys(merge_series, units='demon_hunter.png', remove=True)
         merge_series = preserve_unit(merge_series, target='chemist.png')
         # Remove 4x cauldrons
         for _ in range(4):
             merge_series = preserve_unit(merge_series, target='cauldron.png', keep_min=True)
         # Try to keep knight_statue numbers even (can conflict if special_merge already merged)
-        num_knight = sum(adv_filter_keys(merge_series, 'knight_statue.png'))
+        num_knight = sum(adv_filter_keys(merge_series, units='knight_statue.png'))
         if num_knight % 2 == 1:
             self.harley_merge(df_split, merge_series, target='knight_statue.png')
         # Preserve 2 highest knight statues
@@ -305,34 +305,30 @@ class Bot:
             merge_series = preserve_unit(merge_series, target='knight_statue.png')
         # Select stuff to merge
         merge_series = merge_series[merge_series >= 2]  # At least 2 units
-        # check if grid full
-        if ('empty.png', 0) in group_keys:
-            # Try to merge high priority units
-            merge_prio = adv_filter_keys(merge_series,
-                                         [['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png']])
-            if not merge_prio.empty:
-                info = 'Merging High Priority!'
-                merge_df = self.merge_unit(df_split, merge_prio)
-            # Merge if full board
-            if df_groups['empty.png'] <= 2:
-                info = 'Merging!'
-                # Add criteria
-                merge_series = adv_filter_keys(merge_series, rank, remove=False)
+        # Try to merge high priority units
+        merge_prio = adv_filter_keys(merge_series,
+                                     units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
+        if not merge_prio.empty:
+            info = 'Merging High Priority!'
+            merge_df = self.merge_unit(df_split, merge_prio)
+        # Merge if board is getting full
+        if df_groups['empty.png'] <= 2:
+            info = 'Merging!'
+            # Add criteria
+            low_series = adv_filter_keys(merge_series, ranks=rank, remove=False)
+            if not low_series.empty:
+                merge_df = self.merge_unit(df_split, low_series)
+            else:
+                # If grid seems full, merge more units
+                info = 'Merging high level!'
+                merge_series = adv_filter_keys(merge_series,
+                                               ranks=[3, 4, 5, 6, 7],
+                                               units=['zealot.png', 'crystal.png', 'bruser.png', merge_target],
+                                               remove=True)
                 if not merge_series.empty:
                     merge_df = self.merge_unit(df_split, merge_series)
-                else:
-                    info = 'not enough rank 1 targets!'
-            else:
-                info = 'need more units!'
-        # If grid seems full, merge more units
-        # else:
-        #     info = 'Full Grid - Merging!'
-        #     # Remove all high level dps units
-        #     merge_series = adv_filter_keys(merge_series,
-        #                                    [[3, 4, 5, 6, 7], ['zealot.png', 'crystal.png', 'bruser.png', merge_target]],
-        #                                    remove=True)
-        #     if not merge_series.empty:
-        #         merge_df = self.merge_unit(df_split, merge_series)
+        else:
+            info = 'need more units!'
         return grid_df, unit_series, merge_series, merge_df, info
 
     # Mana level cards
@@ -520,6 +516,8 @@ def get_grid():
 def get_unit_count(grid_df):
     df_split = grid_df.groupby("unit")
     df_groups = df_split["unit"].count()
+    if not 'empty.png' in df_groups:
+        df_groups['empty.png'] = 0
     unit_list = list(df_groups.index)
     return df_split, df_groups, unit_list
 
@@ -533,7 +531,7 @@ def preserve_unit(unit_series, target='chemist.png', keep_min=False):
     param: keep_min - if true, keep the lowest rank unit instead of highest
     """
     merge_series = unit_series.copy()
-    preserve_series = adv_filter_keys(merge_series, target, remove=False)
+    preserve_series = adv_filter_keys(merge_series, units=target, remove=False)
     if not preserve_series.empty:
         if keep_min:
             preserve_unit = preserve_series.index.min()
@@ -560,64 +558,68 @@ def grid_meta_info(grid_df, min_age=0):
     df_split = grid_df.groupby(['unit', 'rank'])
     # Count number of unit of each rank
     unit_series = df_split['unit'].count()
-    unit_series = unit_series.sort_values(ascending=False)
+    #unit_series = unit_series.sort_values(ascending=False)
     group_keys = list(unit_series.index)
     return df_split, unit_series, df_groups, group_keys
 
 
-def adv_filter_keys(unit_series, tokens, remove=False):
+def filter_units(unit_series, units):
+    if not isinstance(units, list):  # Make units a list if not already
+        units = [units]
+    # Create temp series to hold matches
+    series = []
+    merge_series = unit_series.copy()
+    for token in units:
+        if isinstance(token, int):
+            exists = merge_series.index.get_level_values('rank').isin([token]).any()
+            if exists:
+                series.append(merge_series.xs(token, level='rank', drop_level=False))
+            else:
+                continue  # skip if nothing matches criteria
+        elif isinstance(token, str):
+            if token in merge_series:
+                series.append(merge_series.xs(token, level='unit', drop_level=False))
+            else:
+                continue
+    if not len(series) == 0:
+        temp_series = pd.concat(series)
+        # Select all entries from original series that are in temp_series
+        merge_series = merge_series[merge_series.index.isin(temp_series.index)]
+        return merge_series
+    else:
+        return pd.Series(dtype=object)
+
+
+def adv_filter_keys(unit_series, units=None, ranks=None, remove=False):
     """
-    Returns all elements which match tokens value with multiple levels
-    Either provide list of list, list or unit type/unit rank and if remove from series or out
-    Criteria example:  [[3,4,5],['zealot.png','crystal.png']]
-    If filter is only list of unit types must be in nested list [['zealot.png','crystal.png']]
+    Returns all elements which match units and ranks values
+    If one of the parameters is None, it is ignored and all values are kept
+    If remove is True, all elements are removed which do not match the criteria
     param: unit_series - pandas series of units to filter
-    param: tokens - list of list of unit types or unit ranks to filter
+    param: units - string or list of strings of units to filter by
+    param: ranks - int or list of ints of ranks to filter by
     param: remove - if true, return filtered series, if false, return only matches
     """
+    # return if no units in series
     if unit_series.empty:
         return pd.Series(dtype=object)
-    if not isinstance(tokens, list):  # Make token a list if not already
-        tokens = [tokens]
-    # Add detection of dimension in input tokens
-    merge_series = unit_series.copy()
-    for level in tokens:
-        merge_series_temp = merge_series.copy()
-        if not isinstance(level, list):  # Make token a list if not already
-            level = [level]
-        series = []
-        for token in level:
-            # check if given token is int, assume unit rank filter
-            if isinstance(token, int):
-                exists = merge_series.index.get_level_values('rank').isin([token]).any()
-                if exists:
-                    series.append(merge_series.xs(token, level='rank', drop_level=False))
-                else:
-                    continue  # skip if nothing matches criteria
-            elif isinstance(token, str):
-                if token in merge_series:
-                    series.append(merge_series.xs(token, level='unit', drop_level=False))
-                else:
-                    continue
-        # Every iteration
-        # If any matches are found
-        if not len(series) == 0:
-            merge_series = pd.concat(series)
-            # Select matches in previous matches
-            merge_series = merge_series_temp[merge_series_temp.index.isin(merge_series.index)]
-        # return empty list if empty and nothing matches criteria
-        elif not remove:
-            return pd.Series(dtype=object)
-        # if removing matches from initial series and no matches are found, do nothing this loop, keep list same
-        else:
-            continue
-    # LOOP DONE
-    if remove and len(merge_series) != len(unit_series):
-        # Remove all matches found from original series
-        series = unit_series.copy()
-        merge_series = series[~series.index.isin(merge_series.index)]
-    # Return matches found
-    return merge_series
+    filtered_ranks = pd.Series(dtype=object)
+    if not units is None:
+        filtered_units = filter_units(unit_series, units)
+    else:
+        filtered_units = unit_series.copy()
+    # if all units are filtered already, return empty series
+    if not ranks is None and not filtered_units.empty:
+        filtered_ranks = filter_units(filtered_units, ranks)
+    else:
+        filtered_ranks = filtered_units.copy()
+    # Final filtering
+    series = unit_series.copy()
+    if remove:
+        series = series[~series.index.isin(filtered_ranks.index)]
+    else:
+        series = series[series.index.isin(filtered_ranks.index)]
+    return series
 
 
 # Will spam read all knowledge in knowledge base for free gold, roughly 3k, 100 gems

@@ -91,7 +91,6 @@ def bot_loop(bot, info_event):
     # Load optional settings
     require_shaman = config.getboolean('require_shaman', False)
     max_loops = int(config.get('max_loops', 100))  # this will increase time waiting when logging in from mobile
-
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
     # State variables
@@ -99,8 +98,11 @@ def bot_loop(bot, info_event):
     combat = 0
     watch_ad = False
     grid_df = None
+    # Wait for login
+    time.sleep(5)
     # Main loop
     bot.logger.debug(f'Bot mainloop started')
+    # Wait for game to load
     while (not bot.bot_stop):
         output = bot.battle_screen(start=False)
         if output[1] == 'fighting':

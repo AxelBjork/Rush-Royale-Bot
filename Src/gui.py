@@ -147,9 +147,11 @@ class RR_bot:
         if grid_df is not None:
             grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('.png', ''))
             grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('empty', '-'))
+            num_demons = str(grid_df[grid_df['unit'] == 'demon_hunter']['rank'].sum())
+            avg_age = str(grid_df['Age'].mean().round(2))
             write_to_widget(
                 self.root, self.grid_dump,
-                f"{combat}, {i+1}/8 {output}, {info}\n{grid_df.to_string()}\nAverage age: {str(grid_df['Age'].mean().round(2))}"
+                f"{combat}, {i+1}/8 {output}, {info}\n{grid_df.to_string()}\nAverage age: {avg_age}\tNumber of demon ranks: {num_demons}"
             )
         if unit_series is not None:
             #unit_series['unit'] = unit_series['unit'].apply(lambda x: x.replace('.png',''))
