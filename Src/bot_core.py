@@ -94,8 +94,12 @@ class Bot:
         bot_id = self.device.split(':')[-1]
         p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
         p.wait()
-        # Store screenshot in class variable
-        self.screenRGB = cv2.imread(f'bot_feed_{bot_id}.png')
+        # Store screenshot in class variable if valid
+        new_img = cv2.imread(f'bot_feed_{bot_id}.png')
+        if new_img is not None:
+            self.screenRGB = new_img
+        else:
+            self.logger.warning('Failed to get screen')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -287,8 +291,7 @@ class Bot:
             num_demon = sum(demons)
             if num_demon >= 11:
                 # If board is mostly demons, chill out
-                self.logger.info(
-                    f'Board is full of demons, waiting...')
+                self.logger.info(f'Board is full of demons, waiting...')
                 time.sleep(10)
             if self.config.getboolean('bot', 'require_shaman'):
                 merge_series = adv_filter_keys(merge_series, units='demon_hunter.png', remove=True)

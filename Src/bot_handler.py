@@ -134,7 +134,7 @@ def bot_loop(bot, info_event):
             if combat == 25 and 5 < grid_df['Age'].mean() < 50 and train_ai:
                 bot_perception.add_grid_to_dataset()
         elif output[1] == 'home' and watch_ad:
-            bot.watch_ads()
+            [bot.watch_ads() for i in range(3)]
             watch_ad = False
         else:
             combat = 0
