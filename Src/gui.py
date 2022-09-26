@@ -114,8 +114,7 @@ class RR_bot:
         # Dump infos to gui whenever ready
         while (1):
             infos_ready.wait(timeout=5)
-            self.update_text(bot.combat_step, bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series,
-                             bot.info)
+            self.update_text(bot.combat, bot.output, bot.grid_df, bot.unit_series, bot.merge_series, bot.info)
             infos_ready.clear()
             if self.stop_flag:
                 self.bot_instance.bot_stop = True
@@ -142,17 +141,14 @@ class RR_bot:
             self.logger.warning('Bot has not been started yet!')
 
     # Update text widgets with latest info
-    def update_text(self, i, combat, output, grid_df, unit_series, merge_series, info):
+    def update_text(self, combat, output, grid_df, unit_series, merge_series, info):
         # info + general info
         if grid_df is not None:
             grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('.png', ''))
             grid_df['unit'] = grid_df['unit'].apply(lambda x: x.replace('empty', '-'))
-            num_demons = str(grid_df[grid_df['unit'] == 'demon_hunter']['rank'].sum())
             avg_age = str(grid_df['Age'].mean().round(2))
-            write_to_widget(
-                self.root, self.grid_dump,
-                f"{combat}, {i+1}/8 {output}, {info}\n{grid_df.to_string()}\nAverage age: {avg_age}\tNumber of demon ranks: {num_demons}"
-            )
+            write_to_widget(self.root, self.grid_dump,
+                            f"{combat}, {output}, {info}\n{grid_df.to_string()}\nAverage age: {avg_age}")
         if unit_series is not None:
             #unit_series['unit'] = unit_series['unit'].apply(lambda x: x.replace('.png',''))
             write_to_widget(self.root, self.unit_dump, unit_series.to_string())

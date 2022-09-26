@@ -128,7 +128,6 @@ def bot_loop(bot, info_event):
             bot.grid_df = grid_df.copy()
             bot.combat = combat
             bot.output = output[1]
-            bot.combat_step = 1
             info_event.set()
             # Wait until late stage in combat and if consistency is ok, not stagnate save all units for ML model
             if combat == 25 and 5 < grid_df['Age'].mean() < 50 and train_ai:
