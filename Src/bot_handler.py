@@ -90,7 +90,7 @@ def bot_loop(bot, info_event):
     user_target = config['dps_unit'].split('.')[0] + '.png'
     # Load optional settings
     require_shaman = config.getboolean('require_shaman', False)
-    max_loops = int(config.get('max_loops', 100))  # this will increase time waiting when logging in from mobile
+    max_loops = int(config.get('max_loops', 800))  # this will increase time waiting when logging in from mobile
     # Dev options (only adds images to dataset, rank ai can be trained with bot_perception.quick_train_model)
     train_ai = False
     # State variables
@@ -104,6 +104,7 @@ def bot_loop(bot, info_event):
     bot.logger.debug(f'Bot mainloop started')
     # Wait for game to load
     while (not bot.bot_stop):
+        # Fetch screen and check state
         output = bot.battle_screen(start=False)
         if output[1] == 'fighting':
             watch_ad = True
@@ -113,28 +114,27 @@ def bot_loop(bot, info_event):
                 bot.restart_RR()
                 combat = 0
                 continue
+            elif bot.bot_stop:
+                return
             elif require_shaman and not (output[0] == 'shaman_opponent.png').any(axis=None):
                 bot.logger.info('Shaman not found, checking again...')
                 if any([(bot.battle_screen(start=False)[0] == 'shaman_opponent.png').any(axis=None) for i in range(1)]):
                     continue
                 bot.logger.warning('Leaving game')
                 bot.restart_RR(quick_disconnect=True)
-            else:
-                for i in range(8):
-                    grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
-                        bot, grid_df, user_level, user_target)
-                    bot.grid_df = grid_df.copy()
-                    bot.combat = combat
-                    bot.output = output[1]
-                    bot.combat_step = i
-                    info_event.set()
-                    if bot.bot_stop:
-                        return
+            # Combat Section
+            grid_df, bot.unit_series, bot.merge_series, bot.df_groups, bot.info = combat_loop(
+                bot, grid_df, user_level, user_target)
+            bot.grid_df = grid_df.copy()
+            bot.combat = combat
+            bot.output = output[1]
+            bot.combat_step = 1
+            info_event.set()
             # Wait until late stage in combat and if consistency is ok, not stagnate save all units for ML model
             if combat == 25 and 5 < grid_df['Age'].mean() < 50 and train_ai:
                 bot_perception.add_grid_to_dataset()
         elif output[1] == 'home' and watch_ad:
-            bot.watch_ads()
+            [bot.watch_ads() for i in range(3)]
             watch_ad = False
         else:
             combat = 0

@@ -94,8 +94,12 @@ class Bot:
         bot_id = self.device.split(':')[-1]
         p = Popen(['.scrcpy\\adb', 'exec-out', 'screencap', '-p', '>', f'bot_feed_{bot_id}.png'], shell=True)
         p.wait()
-        # Store screenshot in class variable
-        self.screenRGB = cv2.imread(f'bot_feed_{bot_id}.png')
+        # Store screenshot in class variable if valid
+        new_img = cv2.imread(f'bot_feed_{bot_id}.png')
+        if new_img is not None:
+            self.screenRGB = new_img
+        else:
+            self.logger.warning('Failed to get screen')
 
     # Crop latest screenshot taken
     def crop_img(self, x, y, dx, dy, name='icon.png'):
@@ -270,7 +274,7 @@ class Bot:
     def try_merge(self, rank=1, prev_grid=None, merge_target='zealot.png'):
         info = ''
         merge_df = None
-        names = self.scan_grid(new=True)
+        names = self.scan_grid(new=False)
         grid_df = bot_perception.grid_status(names, prev_grid=prev_grid)
         df_split, unit_series, df_groups, group_keys = grid_meta_info(grid_df)
         # Select stuff to merge
@@ -287,8 +291,7 @@ class Bot:
             num_demon = sum(demons)
             if num_demon >= 11:
                 # If board is mostly demons, chill out
-                self.logger.info(
-                    f'Board is full of demons, waiting...')
+                self.logger.info(f'Board is full of demons, waiting...')
                 time.sleep(10)
             if self.config.getboolean('bot', 'require_shaman'):
                 merge_series = adv_filter_keys(merge_series, units='demon_hunter.png', remove=True)
@@ -305,6 +308,7 @@ class Bot:
             merge_series = preserve_unit(merge_series, target='knight_statue.png')
         # Select stuff to merge
         merge_series = merge_series[merge_series >= 2]  # At least 2 units
+        merge_series = adv_filter_keys(merge_series, ranks=7, remove=True)  # Remove max ranks
         # Try to merge high priority units
         merge_prio = adv_filter_keys(merge_series,
                                      units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
