@@ -274,7 +274,7 @@ class Bot:
     def try_merge(self, rank=1, prev_grid=None, merge_target='zealot.png'):
         info = ''
         merge_df = None
-        names = self.scan_grid(new=True)
+        names = self.scan_grid(new=False)
         grid_df = bot_perception.grid_status(names, prev_grid=prev_grid)
         df_split, unit_series, df_groups, group_keys = grid_meta_info(grid_df)
         # Select stuff to merge
@@ -308,6 +308,7 @@ class Bot:
             merge_series = preserve_unit(merge_series, target='knight_statue.png')
         # Select stuff to merge
         merge_series = merge_series[merge_series >= 2]  # At least 2 units
+        merge_series = adv_filter_keys(merge_series, ranks=7, remove=True)  # Remove max ranks
         # Try to merge high priority units
         merge_prio = adv_filter_keys(merge_series,
                                      units=['chemist.png', 'bombardier.png', 'summoner.png', 'knight_statue.png'])
