@@ -381,7 +381,7 @@ class Bot:
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
                 self.click_button(pos + [0, 85 + 400 * (floor % 3)])  #(only 1,2, 4,5, 7, 8, 10)
-                self.click_button((130, 950))
+                self.click_button((500, 600))
                 for i in range(10):
                     time.sleep(2)
                     avail_buttons = self.get_current_icons(available=True)
