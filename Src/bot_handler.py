@@ -83,9 +83,6 @@ def bot_loop(bot, info_event):
     user_pve = config.getboolean('pve', True)
     bot.logger.warning(f'PVE is set to {user_pve}')
     user_floor = int(config.get('floor', 5))
-    if user_floor not in [1, 2, 4, 5, 7, 8]:
-        bot.bot_stop
-        bot.logger.error(f'Invalid floor {user_floor} floor 3, 6, 9, and 10+ are not supported')
     user_level = np.fromstring(config['mana_level'], dtype=int, sep=',')
     user_target = config['dps_unit'].split('.')[0] + '.png'
     # Load optional settings
@@ -139,7 +136,7 @@ def bot_loop(bot, info_event):
         else:
             combat = 0
             bot.logger.info(f'{output[1]}, wait count: {wait}')
-            output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)  #(only 1,2,4,5,7,8,10 possible)
+            output = bot.battle_screen(start=True, pve=user_pve, floor=user_floor)
             wait += 1
             if wait > 40:
                 bot.logger.info('RESTARTING')
