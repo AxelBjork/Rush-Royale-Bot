@@ -348,39 +348,46 @@ class Bot:
     def play_dungeon(self, floor=5):
         self.logger.debug(f'Starting Dungeon floor {floor}')
         # Divide by 3 and take ceiling of floor as int
-        target_chapter = f'chapter_{int(np.ceil(floor/3))}.png'
-        expanded = 0
+        target_chapter = f'chapter_{int(np.ceil((floor)/3))}.png'
+        next_chapter = f'chapter_{int(np.ceil((floor+1)/3))}.png'
         pos = np.array([0, 0])
         avail_buttons = self.get_current_icons(available=True)
         # Check if on dungeon page
         if (avail_buttons == 'dungeon_page.png').any(axis=None):
-            # Fast select floor 10 if selected
-            if floor == 10 and (avail_buttons == target_chapter).any(axis=None):
-                # Start floor
-                pos = np.array([450, 1200 - 485])
-            else:
-                # Swipe to the top
-                [self.swipe([0, 0], [2, 0]) for i in range(10)]
-                self.click(30, 600, 5)  # stop scroll and scan screen for buttons
-                # Keep swiping until floor is found
-                for i in range(10):
-                    avail_buttons = self.get_current_icons(available=True)
-                    # Look for correct chapter
-                    if (avail_buttons == target_chapter).any(axis=None):
-                        pos = get_button_pos(avail_buttons, target_chapter)
-                        if not expanded:
-                            expanded = 1
-                            self.click_button(pos + [500, 90])
-                        # check button is near top of screen
-                        if pos[1] < 550:
-                            # Stop scrolling
-                            break
-                    # Swipe down (change to swipe up for floor 10 cleared)
-                    [self.swipe([2, 0], [0, 0]) for i in range(1)]
-                    self.click(30, 600)  # stop scroll and scan screen for buttons
+            # Swipe to the top
+            [self.swipe([0, 0], [2, 0]) for i in range(14)]
+            self.click(30, 600, 5)  # stop scroll and scan screen for buttons
+            # Keep swiping until floor is found
+            expanded = 0
+            for i in range(10):
+                # Scan screen for buttons
+                avail_buttons = self.get_current_icons(available=True)
+                # Look for correct chapter
+                if (avail_buttons == target_chapter).any(axis=None):
+                    pos = get_button_pos(avail_buttons, target_chapter)
+                    if not expanded:
+                        expanded = 1
+                        self.click_button(pos + [500, 90])
+                    # check button is near top of screen
+                    if pos[1] < 550 and floor % 3 != 0:
+                        # Stop scrolling when chapter is near top
+                        break
+                elif (avail_buttons == next_chapter).any(axis=None) and floor % 3 == 0:
+                    pos = get_button_pos(avail_buttons, next_chapter)
+                    # Stop scrolling if the next chapter is found and last floor of chapter is chosen
+                    break
+                # Contiue to swiping to find correct chapter
+                [self.swipe([2, 0], [0, 0]) for i in range(2)]
+                self.click(30, 600)  # stop scroll
+
             # Click play floor if found
             if not (pos == np.array([0, 0])).any():
-                self.click_button(pos + [0, 85 + 400 * (floor % 3)])  #(only 1,2, 4,5, 7, 8, 10)
+                if floor % 3 == 0:
+                    self.click_button(pos + [30, -460])
+                elif floor % 3 == 1:
+                    self.click_button(pos + [30, 485])
+                elif floor % 3 == 2:
+                    self.click_button(pos + [30, 885])
                 self.click_button((500, 600))
                 for i in range(10):
                     time.sleep(2)
