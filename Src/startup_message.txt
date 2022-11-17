@@ -1,4 +1,4 @@
-Rush Royale Bot v1.0                 |
+Rush Royale Bot v1.1                 |
 |                                    |
 |             ,.___          ___....--._
 |           ,'     `""""""""'           `-._
